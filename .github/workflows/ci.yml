@@ -1,0 +1,52 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: {}
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python: ["3.9", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install -e ".[test]"
+      - run: pytest -q
+      - name: Build wheel
+        run: pip install build && python -m build
+
+  # The workbench, driven in a real browser: uploads, live Stack preview, Output
+  # downloads (CDP), Inspect, Recipes — 68 checks against the real gui server.
+  e2e-browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[test]"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install the driver
+        run: npm i --no-audit --no-fund
+        working-directory: tests/e2e
+      - name: Workbench browser E2E (68 checks)
+        run: node tests/e2e/workbench.e2e.mjs
+        env:
+          E2E_WORK: ${{ runner.temp }}/wb-e2e
+      - name: Screenshots (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: workbench-e2e-screenshots
+          path: ${{ runner.temp }}/wb-e2e/*.png
+          if-no-files-found: ignore

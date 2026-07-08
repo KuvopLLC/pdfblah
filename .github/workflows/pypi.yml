@@ -1,0 +1,23 @@
+name: pypi
+
+# Publishes to PyPI when a GitHub Release is published. Uses PyPI Trusted
+# Publishing (OIDC), so no API token is stored. One-time setup: on PyPI, add a
+# pending publisher for project "pdfblah" -> repo KuvopLLC/pdfblah, workflow
+# pypi.yml.
+on:
+  release:
+    types: [published]
+  workflow_dispatch: {}
+
+jobs:
+  pypi:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install build && python -m build
+      - uses: pypa/gh-action-pypi-publish@release/v1

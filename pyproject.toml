@@ -1,0 +1,53 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pdfblah"
+version = "0.9.0"
+description = "A precise, non-destructive Swiss army knife for PDFs: replace, redact, remove text, scrub PII, anonymize, edit metadata, watermark, stamp, number, split, merge, rotate, crop, encrypt, render, compare, and fill forms. Fonts and layout kept perfect."
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Kuvop LLC" }]
+keywords = ["pdf", "find", "replace", "edit", "text", "cli", "redact", "anonymize", "scrub", "pii", "watermark", "stamp", "split", "merge", "rotate", "encrypt", "page-numbers", "bates", "pdf-toolkit", "pdf-editor", "acrobat-alternative"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: POSIX",
+  "Operating System :: MacOS",
+  "Environment :: Console",
+  "Topic :: Text Processing",
+  "Topic :: Utilities",
+  "Intended Audience :: Developers",
+  "Intended Audience :: End Users/Desktop",
+]
+dependencies = ["pdfplumber>=0.11", "pikepdf>=8", "python-stdnum>=1.19", "Faker>=20", "reportlab>=4"]
+
+[project.optional-dependencies]
+# preview rendering (used by the hosted engine). The CLI and the local `pdfblah gui`
+# browser app run on the base dependencies alone.
+app = ["Pillow>=10", "pypdfium2>=4"]
+# validating digital signatures (pdfblah signatures --validate); reading them needs nothing
+sign = ["pyhanko>=0.20"]
+# OCR a scanned PDF into a searchable one. Also needs the system tools Tesseract +
+# Ghostscript (see `pdfblah doctor`); pip cannot install those.
+ocr = ["ocrmypdf>=16"]
+# PDF <-> Word conversion. `convert` to PDF from office formats also needs LibreOffice
+# installed (see `pdfblah doctor`); PDF -> DOCX needs only pdf2docx.
+convert = ["pdf2docx>=0.5"]
+test = ["pytest", "Pillow>=10", "pypdfium2>=4"]
+
+[project.urls]
+Homepage = "https://pdfblah.com"
+Source = "https://github.com/KuvopLLC/pdfblah"
+Issues = "https://github.com/KuvopLLC/pdfblah/issues"
+
+[project.scripts]
+pdfblah = "pdfblah.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["pdfblah"]
+# ship the shared web assets (tool UI) inside the wheel so `pdfblah gui` and the
+# hosted build both consume ONE pinned copy and never drift
+artifacts = ["pdfblah/web/*", "pdfblah/gui/*.html"]

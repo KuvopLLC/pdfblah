@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>pdfblah workbench</title>
+<style>
+  html,body{margin:0;height:100%;background:#fffcf3}
+</style>
+<link rel="stylesheet" href="/workbench.css">
+</head>
+<body>
+<div id="wb"></div>
+<script type="module">
+import { mountWorkbench } from "/workbench.js";
+const host = {
+  maxBytes: 1024 * 1024 * 1024,
+  async post(path, payload) {
+    const r = await fetch("/" + path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload || {}) });
+    return r.json();
+  },
+  downloadUrl: (fileId) => "/download/" + fileId,
+};
+mountWorkbench(document.querySelector("#wb"), host);
+</script>
+</body>
+</html>

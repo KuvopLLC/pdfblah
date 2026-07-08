@@ -1,0 +1,47 @@
+# ==========================================================================
+# pdfblah rules file
+# ==========================================================================
+# One rule per line, written as:   FIND | REPLACE | FLAGS
+#
+#   FIND      the text to look for            (required)
+#   REPLACE   the text to put in its place    (optional; leave empty to DELETE)
+#   FLAGS     options, space-separated         (optional; listed below)
+#
+# The | character separates the three fields, so your text cannot contain a "|".
+# Lines that start with #  are comments and are ignored.
+# Blank lines are ignored.  You can have up to 50 rules.
+#
+# --------------------------------------------------------------------------
+# FLAGS  (mix and match, in any order; leave them off for the defaults)
+# --------------------------------------------------------------------------
+#   first   change only the first match     (this is the default)
+#   all     change every match, on every page
+#   2       change one match by number      (2 = the 2nd match, 3 = the 3rd, ...)
+#   ci      ignore case                     (INVOICE also matches invoice)
+#   word    whole word only                 ("cat" will not match "category")
+#   p2      look only on page 2             (use p1, p3, ... for other pages)
+#
+# --------------------------------------------------------------------------
+# EXAMPLES  (delete these and write your own)
+# --------------------------------------------------------------------------
+
+# Replace every "Old Company Name" with "New Company Name", everywhere:
+Old Company Name | New Company Name | all
+
+# Change only the first "999.00" to "42.00" (no flags = first match only):
+999.00 | 42.00
+
+# Replace "confidential draft" with "FINAL", ignoring capitalization:
+CONFIDENTIAL DRAFT | FINAL | ci
+
+# Swap the name everywhere, but only where it appears as a whole word:
+Jane Doe | John Smith | all word
+
+# Replace just the 2nd time "Total" appears:
+Total | Sum | 2
+
+# Delete every "CONFIDENTIAL" stamp (empty replace = delete, all = everywhere):
+CONFIDENTIAL |  | all
+
+# Delete this phrase once (leave the replace side blank):
+delete this phrase |
