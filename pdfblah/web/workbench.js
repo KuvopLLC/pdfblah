@@ -32,9 +32,9 @@ export function mountWorkbench(root, host = {}) {
   root.classList.add("wb");
   root.innerHTML = `
     <aside class="wb-left">
-      <div class="wb-lhead"><span class="wb-eyebrow wb-sesslabel">Session</span><button class="wb-add">+ Add</button></div>
+      <div class="wb-lhead"><span class="wb-eyebrow wb-sesslabel">Files</span><button class="wb-add">+ Add PDF</button></div>
       <div class="wb-files"></div>
-      <div class="wb-lhint" hidden>✓ = included in output · drop PDFs anywhere to add</div>
+      <div class="wb-lhint" hidden>✓ = goes in your download · drop PDFs anywhere to add more</div>
       <div class="wb-pageslabel wb-eyebrow" hidden>Pages</div>
       <div class="wb-pages"></div>
       <input type="file" class="wb-fileinput" accept="application/pdf" multiple hidden>
@@ -49,15 +49,15 @@ export function mountWorkbench(root, host = {}) {
       <div class="wb-nav" hidden></div>
     </main>
     <aside class="wb-right">
-      <div class="wb-tabs"><button class="wb-tab on" data-t="stack">Stack<span class="wb-count" hidden></span></button><button class="wb-tab" data-t="inspect">Inspect</button><button class="wb-recbtn">Recipes ▾</button></div>
+      <div class="wb-tabs"><button class="wb-tab on" data-t="stack">Edits<span class="wb-count" hidden></span></button><button class="wb-tab" data-t="inspect">Inspect</button><button class="wb-recbtn">Recipes ▾</button></div>
       <div class="wb-recmenu" hidden>
-        <div class="wb-recsave"><input class="wb-fin wb-recname" placeholder="name this stack…" maxlength="80"><button class="wb-recsavebtn">Save</button></div>
+        <div class="wb-recsave"><input class="wb-fin wb-recname" placeholder="name these edits…" maxlength="80"><button class="wb-recsavebtn">Save</button></div>
         <div class="wb-reclist"></div>
       </div>
       <div class="wb-rightbody">
         <div class="wb-tabbody" data-t="stack">
           <div class="wb-steps"></div>
-          <button class="wb-addstep">+ Add step</button>
+          <button class="wb-addstep">+ Add an edit</button>
           <div class="wb-stepmenu" hidden></div>
         </div>
         <div class="wb-tabbody" data-t="inspect" hidden>
@@ -74,7 +74,7 @@ export function mountWorkbench(root, host = {}) {
         </div>
         <div class="wb-quote" hidden></div>
         <button class="wb-download" disabled>Download</button>
-        <button class="wb-reciperow" type="button">Save stack as recipe</button>
+        <button class="wb-reciperow" type="button">Save these edits as a recipe</button>
       </div>
     </aside>`;
 
@@ -120,7 +120,7 @@ export function mountWorkbench(root, host = {}) {
   // ---------- file list ----------
   function renderFiles() {
     const n = S.files.length;
-    $(".wb-sesslabel").textContent = n ? `Session · ${n} file${n === 1 ? "" : "s"}` : "Session";
+    $(".wb-sesslabel").textContent = n ? `Files · ${n}` : "Files";
     $(".wb-lhint").hidden = !n;
     filesEl.innerHTML = "";
     S.files.forEach((rec) => {
@@ -420,7 +420,7 @@ export function mountWorkbench(root, host = {}) {
     renderOutput();
     if (!S.stack.length) {
       stepsEl.appendChild(el("div", "wb-stackhint",
-        `Your edits stack up here — <b>Replace</b>, <b>Redact</b>, <b>Watermark</b>… They apply top to bottom, and the <b>After</b> view updates as you type.`));
+        `Add your first edit: <b>Replace</b>, <b>Redact</b>, <b>Watermark</b>… Edits apply top to bottom, and the <b>After</b> view updates as you type.`));
     }
     S.stack.forEach((st, i) => {
       const { text, warn, broken, full } = summaryFor(st);
@@ -429,9 +429,9 @@ export function mountWorkbench(root, host = {}) {
       const head = el("div", "wb-shead");
       head.innerHTML = `<span class="wb-sn">${i + 1}</span><div class="wb-smeta"><div class="wb-stitle">${esc(STEPS[st.type].title)}</div><div class="wb-ssum${warn ? " warn" : ""}" title="${esc(full)}">${esc(text)}</div></div>`;
       head.onclick = () => { S.expanded = S.expanded === st.uid ? null : st.uid; renderStack(); };
-      const rm = el("button", "wb-srm", "×"); rm.title = "remove step";
+      const rm = el("button", "wb-srm", "×"); rm.title = "remove this edit";
       rm.onclick = (e) => { e.stopPropagation(); S.stack = S.stack.filter((x) => x !== st); if (S.expanded === st.uid) S.expanded = null; renderStack(); stackChanged(null, true); };
-      const sw = el("label", "wb-sw"); sw.title = "step on/off"; sw.onclick = (e) => e.stopPropagation();
+      const sw = el("label", "wb-sw"); sw.title = "edit on/off"; sw.onclick = (e) => e.stopPropagation();
       const cb = el("input"); cb.type = "checkbox"; cb.checked = st.on;
       cb.onchange = () => { st.on = cb.checked; card.classList.toggle("off", !st.on); stackChanged(st, true); };
       sw.append(cb, el("span", "wb-swk"));
@@ -500,8 +500,8 @@ export function mountWorkbench(root, host = {}) {
     const noop = steps > 0 && S.lastApplied === 0;
     const sum = $(".wb-outsum");
     sum.textContent = noop && activeRec()
-      ? `no step applies to ${activeRec().name} — nothing to change`
-      : nAll ? `${inc.length} of ${nAll} file${nAll === 1 ? "" : "s"} · ${steps} step${steps === 1 ? "" : "s"}` : "";
+      ? `no edit applies to ${activeRec().name} — nothing to change`
+      : nAll ? `${inc.length} of ${nAll} file${nAll === 1 ? "" : "s"} · ${steps} edit${steps === 1 ? "" : "s"}` : "";
     sum.classList.toggle("warn", noop);
     const fmts = $(".wb-fmts");
     if (!fmts.children.length) {
@@ -582,12 +582,12 @@ export function mountWorkbench(root, host = {}) {
   };
   function renderRecipes(recipes) {
     recList.innerHTML = "";
-    if (!recipes.length) { recList.appendChild(el("div", "wb-recempty", "No recipes yet — build a stack, name it, Save.")); return; }
+    if (!recipes.length) { recList.appendChild(el("div", "wb-recempty", "No recipes yet. Make some edits, name them, Save.")); return; }
     recipes.forEach((r) => {
       const known = r.steps.filter((st) => STEPS[st.type]);
       const row = el("div", "wb-recrow");
       const meta = el("div", "wb-recmeta",
-        `<div class="wb-recn">${esc(r.name)}</div><div class="wb-recsub">${known.length} step${known.length === 1 ? "" : "s"}</div>`);
+        `<div class="wb-recn">${esc(r.name)}</div><div class="wb-recsub">${known.length} edit${known.length === 1 ? "" : "s"}</div>`);
       meta.onclick = () => { loadRecipe(known); recMenu.hidden = true; };
       const rm = el("button", "wb-frm", "×"); rm.title = "delete recipe";
       rm.onclick = async (e) => { e.stopPropagation(); const d = await post("wbrecipes", { op: "delete", name: r.name }); if (d.ok) renderRecipes(d.recipes); };
@@ -613,12 +613,12 @@ export function mountWorkbench(root, host = {}) {
   }
   async function saveRecipe() {
     const name = recName.value.trim();
-    if (!name || !S.stack.length) { recName.placeholder = S.stack.length ? "name this stack…" : "the stack is empty"; recName.focus(); return; }
+    if (!name || !S.stack.length) { recName.placeholder = S.stack.length ? "name these edits…" : "no edits to save yet"; recName.focus(); return; }
     const steps = S.stack.map((st) => ({ type: st.type, on: st.on, cfg: stripAssets(st.cfg) }));
     const d = await post("wbrecipes", { op: "save", name, steps });
     if (!d.ok) { recName.value = ""; recName.placeholder = d.error || "could not save"; return; }
     recName.value = ""; recName.placeholder = "saved ✓";
-    setTimeout(() => { recName.placeholder = "name this stack…"; }, 1600);
+    setTimeout(() => { recName.placeholder = "name these edits…"; }, 1600);
     renderRecipes(d.recipes);
   }
   $(".wb-recbtn").onclick = () => { if (recMenu.hidden) openRecipes(false); else recMenu.hidden = true; };
@@ -792,7 +792,7 @@ export function mountWorkbench(root, host = {}) {
     // the veil locks the preview pane while the server applies + checks fonts, so "is
     // anything happening?" is never a question; typing in the rail stays free
     veil.hidden = !on || !checkingFonts;
-    if (!veil.hidden) veil.querySelector("span").textContent = "checking fonts · applying steps…";
+    if (!veil.hidden) veil.querySelector("span").textContent = "checking fonts · applying your edits…";
     const busy = viewtop.querySelector(".wb-busy");
     if (busy) busy.hidden = !on;
     renderOutput(); // Download locks while a render is in flight

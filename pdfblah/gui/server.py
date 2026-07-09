@@ -512,7 +512,7 @@ class _Handler(BaseHTTPRequestHandler):
             if not name:
                 self._json({"ok": False, "error": "give the recipe a name"}); return
             if not isinstance(steps, list) or not steps:
-                self._json({"ok": False, "error": "nothing to save — the stack is empty"}); return
+                self._json({"ok": False, "error": "nothing to save yet, add an edit first"}); return
             recipes = [r for r in recipes if r.get("name") != name]
             recipes.insert(0, {"name": name[:80], "steps": steps, "updated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())})
             _save_recipes(recipes)

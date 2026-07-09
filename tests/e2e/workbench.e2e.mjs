@@ -184,7 +184,7 @@ try {
   // --- UX: empty-stack hint, session count, rail caption, grouped menu + Esc ---
   if (await page.$(".wb-stackhint")) ok("empty-stack hint card shown"); else fail("no empty-stack hint");
   const sess = await page.$eval(".wb-sesslabel", (n) => n.textContent);
-  if (/1 file/.test(sess)) ok(`session label counts files (${sess})`); else fail("session label: " + sess);
+  if (/Files · 1/.test(sess)) ok(`file list counts files (${sess})`); else fail("files label: " + sess);
   const hintHidden = await page.$eval(".wb-lhint", (n) => n.hidden);
   if (!hintHidden) ok("left-rail include/drop caption visible"); else fail("left-rail caption hidden");
   await page.click(".wb-addstep");
@@ -312,7 +312,7 @@ try {
   };
 
   const outSum = () => page.$eval(".wb-outsum", (n) => n.textContent);
-  if (/1 of 1 file · 2 steps/.test(await outSum())) ok(`output summary correct (${await outSum()})`);
+  if (/1 of 1 file · 2 edits/.test(await outSum())) ok(`output summary correct (${await outSum()})`);
   else fail("output summary: " + await outSum());
   const wordPill = await page.$eval('.wb-fmt[data-f="word"]', (b) => ({ disabled: b.disabled, title: b.title }));
   if (wordPill.disabled && /pdfblah\[convert\]/.test(wordPill.title)) ok("Word pill gated on missing local converter");
@@ -410,7 +410,7 @@ try {
   await page.keyboard.press("Enter");
   await page.waitForFunction(() => [...document.querySelectorAll(".wb-recn")].some((n) => n.textContent === "client handoff"), { timeout: 25000 });
   const recSub = await page.$eval(".wb-recrow .wb-recsub", (n) => n.textContent);
-  if (/3 steps/.test(recSub)) ok(`recipe saved (${recSub})`); else fail("recipe sub: " + recSub);
+  if (/3 edits/.test(recSub)) ok(`recipe saved (${recSub})`); else fail("recipe sub: " + recSub);
   await page.keyboard.press("Escape");
   await page.waitForFunction(() => document.querySelector(".wb-recmenu").hidden, { timeout: 5000 });
   ok("Esc closes the Recipes menu");
@@ -478,7 +478,7 @@ try {
   if (/BitstreamVeraSans/.test(brkSum) && /refused/.test(brkSum) && /try a replacement/.test(brkSum))
     ok(`refused step looks broken and names the font (${brkSum.slice(0, 60)}…)`);
   else fail("broken summary: " + brkSum);
-  await page.waitForFunction(() => /no step applies to fontrefuse\.pdf/.test(document.querySelector(".wb-outsum")?.textContent || ""), { timeout: 30000 });
+  await page.waitForFunction(() => /no edit applies to fontrefuse\.pdf/.test(document.querySelector(".wb-outsum")?.textContent || ""), { timeout: 30000 });
   const dlState = await page.$eval(".wb-download", (b) => ({ disabled: b.disabled, label: b.textContent }));
   if (dlState.disabled && dlState.label === "Nothing to download") ok("no-op guard: Download locked with an honest label");
   else fail("download state: " + JSON.stringify(dlState));
