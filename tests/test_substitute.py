@@ -82,3 +82,19 @@ def test_pick_substitute_families():
     assert pick_substitute("AGaramond-Bold") == "Times-Bold"
     assert pick_substitute("SomeMono-Italic") == "Courier-Oblique"
     assert pick_substitute("FooSansBoldItalic") == "Helvetica-BoldOblique"
+
+
+CID_PDF = os.path.join(os.path.dirname(__file__), "data", "cidfont.pdf")
+
+
+def test_cid_fonts_refuse_honestly_and_are_not_substitutable(tmp_path):
+    """Identity-H (CID/Type0) fonts store glyph IDs; rewriting and substitution are both
+    impossible today, and the report must say so instead of offering a dead end."""
+    for sub in (False, True):
+        rep = apply_actions(CID_PDF, str(tmp_path / f"o{sub}.pdf"),
+                            [dict(RULE, replace="Foo", substituteFont=sub)])
+        e = rep["rules"][0]
+        assert rep["applied"] == 0
+        assert e["refused"] is True and e["substitutable"] is False
+        assert "glyph IDs" in e["reason"]
+        assert "error" not in e  # never the confusing 'located visually but...' fallback

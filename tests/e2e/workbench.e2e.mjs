@@ -518,6 +518,34 @@ try {
   await page.waitForFunction(() => !document.querySelector(".wb-step.brk"), { timeout: 30000 });
   ok("in-subset replacement clears the broken state and unlocks Download");
 
+  // ================= CID fonts: honest refusal, no dead-end offers =================
+  // cidfont.pdf is Identity-H (glyph IDs). Rewriting AND substitution are impossible,
+  // so the card must say why and must NOT show the substitute button or chip.
+  while (await page.$(".wb-step")) {
+    await page.evaluate(() => document.querySelector(".wb-step .wb-srm").click());
+    await new Promise((r) => setTimeout(r, 120));
+  }
+  await (await page.$(".wb-fileinput")).uploadFile(`${SCRATCH}/cidfont.pdf`);
+  await page.waitForFunction(() => [...document.querySelectorAll(".wb-fn")].some((n) => n.textContent === "cidfont.pdf")
+    && ![...document.querySelectorAll(".wb-file")].some((r) => /reading…/.test(r.textContent)), { timeout: 30000 });
+  await page.evaluate(() => {
+    [...document.querySelectorAll(".wb-file")].find((r) => r.querySelector(".wb-fn")?.textContent === "cidfont.pdf")
+      .querySelector(".wb-fmeta").click();
+  });
+  await page.waitForFunction(() => /cidfont\.pdf/.test(document.querySelector(".wb-vname")?.textContent || ""), { timeout: 25000 });
+  await addStepViaMenu("Replace");
+  await page.type(".wb-step.open .wb-frow:nth-child(1) input", "Acme Corp");
+  await page.type(".wb-step.open .wb-frow:nth-child(2) input", "Foo");
+  await page.waitForSelector(".wb-step.brk", { timeout: 30000 });
+  const cidSum = await page.$eval(".wb-step.brk .wb-ssum", (n) => n.textContent);
+  if (/glyph IDs/.test(cidSum)) ok(`CID refusal says why (${cidSum.slice(0, 55)}…)`); else fail("cid summary: " + cidSum);
+  if (!(await page.$(".wb-fixbtn"))) ok("no substitute button on a CID refusal"); else fail("dead-end substitute button offered");
+  const cidChip = await page.evaluate(() =>
+    [...document.querySelectorAll(".wb-step.open .wb-chip")].some((c) => /Substitute/.test(c.textContent)));
+  if (!cidChip) ok("no substitute chip on a CID refusal"); else fail("substitute chip offered");
+  await page.evaluate(() => document.querySelector(".wb-step .wb-srm").click());
+  await page.waitForSelector(".wb-stackhint", { timeout: 25000 });
+
   // the local app must never show a price line (pricing is hosted-only)
   const quoteShown = await page.$eval(".wb-quote", (n) => !n.hidden).catch(() => false);
   if (!quoteShown) ok("open-core boundary: no price line in the local app"); else fail("price line visible locally!");

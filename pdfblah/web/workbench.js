@@ -188,7 +188,8 @@ export function mountWorkbench(root, host = {}) {
     fChips(body, st, "Options", [["ci", "Ignore case"], ["word", "Whole word"], ["regex", "Regex"]]);
     // the substitution opt-in surfaces as a chip once it's active (or on offer), so it
     // can be turned back off; the primary entry point is the prompt on a refused card
-    if (st.type === "replace" && (st.cfg.substituteFont || (st.entry && st.entry.refused)))
+    if (st.type === "replace" && (st.cfg.substituteFont ||
+        (st.entry && st.entry.refused && st.entry.substitutable !== false)))
       fChips(body, st, "Font", [["substituteFont", "Substitute a similar font"]]);
   };
   const findRule = (t) => (c) => c.find.trim() ? { action: t, find: c.find.trim(), ...(t === "replace" ? { replace: c.replace } : {}), scope: c.scope, ci: !!c.ci, word: !!c.word, regex: !!c.regex, ...(c.substituteFont ? { substituteFont: true } : {}) } : null;
@@ -351,7 +352,9 @@ export function mountWorkbench(root, host = {}) {
       if (e.refused) {
         // the font detect-and-refuse: this step is BROKEN, not just unlucky
         broken = true;
-        const hint = /missing glyph/.test(e.reason || "")
+        const hint = /glyph IDs|Type3|vector glyphs/.test(e.reason || "")
+          ? "its text is stored as glyph IDs, which pdfblah can't rewrite yet"
+          : /missing glyph/.test(e.reason || "")
           ? "try a replacement without those characters"
           : /standard encoding/.test(e.reason || "")
           ? "those characters can't be shown in any standard font"
@@ -369,7 +372,9 @@ export function mountWorkbench(root, host = {}) {
   function syncFixRow(card, st, broken) {
     // the substitution prompt lives on the refused card itself: one explicit click,
     // marked in the report, and only offered where the engine can actually do it
-    const offer = broken && st.type === "replace" && !st.cfg.substituteFont;
+    // never offer substitution where the engine says it can't work (CID/Type3 fonts)
+    const offer = broken && st.type === "replace" && !st.cfg.substituteFont
+      && !(st.entry && st.entry.substitutable === false);
     let row = card.querySelector(".wb-fixrow");
     if (!offer) { if (row) row.remove(); return; }
     if (row) return;

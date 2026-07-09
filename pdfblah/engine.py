@@ -502,6 +502,35 @@ SAFE_FAMILIES = {
     "nimbussans", "nimbusroman", "nimbusmono",
 }
 
+def _font_dict(page, fontname):
+    """The page's /Font entry whose BaseFont matches `fontname`, or None."""
+    fam = base_family_lc(fontname)
+    try:
+        fonts = page.get("/Resources", {}).get("/Font", {})
+    except Exception:
+        fonts = {}
+    for _, f in dict(fonts).items():
+        base = strip_subset(str(f.get("/BaseFont", "")).lstrip("/"))
+        if base and (base.lower() == strip_subset(fontname or "").lower()
+                     or base_family_lc(base) == fam):
+            return f
+    return None
+
+
+def font_hard_refusal(page, fontname):
+    """Fonts whose TEXT BYTES we can't rewrite at all (so substitution can't help
+    either): Type0/CID fonts store glyph IDs, Type3 fonts draw vector glyphs.
+    Returns a reason string, or None."""
+    fd = _font_dict(page, fontname)
+    sub = str(fd.get("/Subtype", "")) if fd is not None else ""
+    if sub == "/Type0":
+        return ("text in this font is stored as glyph IDs (a CID font), "
+                "which pdfblah can't rewrite yet")
+    if sub == "/Type3":
+        return "this text is drawn as vector glyphs (a Type3 font); there's nothing to rewrite"
+    return None
+
+
 def font_safe(page, fontname, replace, wtbl):
     """Decide whether NEW text in `fontname` will render faithfully.
       - embedded font: safe only if every replace char was already observed
@@ -511,16 +540,10 @@ def font_safe(page, fontname, replace, wtbl):
         Arial, etc.) is REFUSED — proven to garble.
     Returns (bool, reason)."""
     fam = base_family_lc(fontname)
-    try:
-        fonts = page.get("/Resources", {}).get("/Font", {})
-    except Exception:
-        fonts = {}
-    fd = None
-    for _, f in dict(fonts).items():
-        base = strip_subset(str(f.get("/BaseFont", "")).lstrip("/"))
-        if base and (base.lower() == strip_subset(fontname or "").lower()
-                     or base_family_lc(base) == fam):
-            fd = f; break
+    hard = font_hard_refusal(page, fontname)
+    if hard:
+        return False, hard
+    fd = _font_dict(page, fontname)
     embedded, enc_custom = False, False
     if fd is not None:
         desc = fd.get("/FontDescriptor", {})
@@ -613,10 +636,14 @@ def process(input_path, output_path, find, replace, page=None, scope="first",
         safe, reason = font_safe(pdf.pages[t["pi"]], t["fontname"], t["rep"], t["wtbl"])
         if safe:
             continue
-        if not substitute:
-            return {"ok": False, "refused": True, "font": t["fontname"], "reason": reason,
-                    "hint": "non-embedded/exotic or custom-encoded font; new text can "
-                            "garble, so this is the detect-and-refuse path"}
+        hard = font_hard_refusal(pdf.pages[t["pi"]], t["fontname"])
+        if not substitute or hard:
+            out = {"ok": False, "refused": True, "font": t["fontname"], "reason": reason,
+                   "hint": "non-embedded/exotic or custom-encoded font; new text can "
+                           "garble, so this is the detect-and-refuse path"}
+            if hard:
+                out["substitutable"] = False
+            return out
         try:
             t["rep"].encode("latin-1")
         except UnicodeEncodeError:
@@ -717,7 +744,7 @@ def apply_rules(input_path, output_path, rules, strip_meta=False, set_meta=None)
                     bool(rule.get("regex")), rule.get("repl"),
                     substitute=bool(rule.get("substituteFont")))
         entry = {"find": find, "replace": replace, "applied": bool(r.get("ok")), "scope": scope}
-        for k in ("count", "font", "reason", "error", "refused", "page", "substituted"):
+        for k in ("count", "font", "reason", "error", "refused", "page", "substituted", "substitutable"):
             if k in r:
                 entry[k] = r[k]
         report.append(entry)

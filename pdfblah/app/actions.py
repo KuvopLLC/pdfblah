@@ -114,7 +114,7 @@ def apply_actions(input_path, output_path, rules):
         r, boxes = _run(action, cur, nxt, rule)
         applied = bool(r.get("ok"))
         entry = {"action": action, "applied": applied}
-        for k in ("count", "pages", "reason", "error", "refused", "font", "saved", "before", "after", "substituted"):
+        for k in ("count", "pages", "reason", "error", "refused", "font", "saved", "before", "after", "substituted", "substitutable"):
             if r.get(k) is not None:
                 entry[k] = r[k]
         if action in ("replace", "redact", "remove"):

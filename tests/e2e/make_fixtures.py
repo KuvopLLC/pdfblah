@@ -9,6 +9,7 @@
 Usage: make_fixtures.py OUTDIR   (needs the package's base+test deps: reportlab, PIL, pikepdf)
 """
 import os
+import shutil
 import sys
 
 import pikepdf
@@ -56,6 +57,11 @@ def main(outdir):
     c.setFont("Vera", 14)
     c.drawString(72, 700, "Client: Acme Corp")
     c.save()
+
+    # cidfont.pdf: a committed Identity-H (CID) fixture; its text can't be rewritten,
+    # so refusal must be honest and the substitute offer must not appear
+    shutil.copy(os.path.join(os.path.dirname(__file__), "..", "data", "cidfont.pdf"),
+                f"{outdir}/cidfont.pdf")
 
     # inspect.pdf + the attachment bytes
     att = b"col_a,col_b\n1,2\n3,4\n" * 40
