@@ -82,7 +82,9 @@ def test_static_server_serves_assets():
     url, httpd = start_server()
     try:
         idx = urllib.request.urlopen(url).read()
-        assert b'id="app"' in idx and b"/app.js" in idx
+        assert b"workbench" in idx  # the workbench is the default local app
+        single = urllib.request.urlopen(url + "single").read()
+        assert b'id="app"' in single and b"/app.js" in single
         for name, needle in [("app.js", b"mountApp"), ("gate.mjs", b"countMatches"),
                              ("app.css", b".pb-app"), ("sample-rules.txt", b"pdfblah rules")]:
             assert needle in urllib.request.urlopen(url + name).read(), name

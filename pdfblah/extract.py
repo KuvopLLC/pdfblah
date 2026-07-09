@@ -13,6 +13,8 @@ def render(input_path, out_dir, pages=None, dpi=150, fmt="png", prefix=None):
     returns their paths. `pages` limits which pages (default all)."""
     import pypdfium2 as pdfium
 
+    from ._pdfium import PDFIUM_LOCK
+
     fmt = fmt.lower().lstrip(".")
     if fmt in ("jpg", "jpeg"):
         fmt, pil_fmt = "jpg", "JPEG"
@@ -22,9 +24,11 @@ def render(input_path, out_dir, pages=None, dpi=150, fmt="png", prefix=None):
         return {"ok": False, "error": f"unsupported image format {fmt!r} (use png or jpg)"}
     os.makedirs(out_dir, exist_ok=True)
     base = prefix or os.path.splitext(os.path.basename(input_path))[0]
-    doc = pdfium.PdfDocument(input_path)
+    PDFIUM_LOCK.acquire()
+    doc = None
     outputs = []
     try:
+        doc = pdfium.PdfDocument(input_path)
         idxs = parse_ranges(pages, len(doc))
         width = max(2, len(str(len(doc))))
         scale = dpi / 72.0
@@ -36,7 +40,9 @@ def render(input_path, out_dir, pages=None, dpi=150, fmt="png", prefix=None):
             pil.save(out, pil_fmt)
             outputs.append(out)
     finally:
-        doc.close()
+        if doc is not None:
+            doc.close()
+        PDFIUM_LOCK.release()
     return {"ok": True, "pages": len(outputs), "dpi": dpi, "outputs": outputs}
 
 

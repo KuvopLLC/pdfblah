@@ -328,7 +328,7 @@ def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv and argv[0] in HANDLERS:
         return HANDLERS[argv[0]](argv[1:])
-    if argv and argv[0] in ("combine", "split", "pages", "rotate", "crop", "render",
+    if argv and argv[0] in ("combine", "split", "pages", "rotate", "crop", "render", "clean",
                             "extract", "protect", "unlock", "attachments", "optimize",
                             "watermark", "stamp", "number", "bates", "form", "compare",
                             "signatures", "convert", "ocr", "doctor"):

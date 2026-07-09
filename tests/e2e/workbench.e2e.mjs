@@ -30,6 +30,7 @@ const ok = (m) => console.log("ok  ✓", m);
 const PORT = 8791;
 const PYBIN = PYBIN_DEFAULT;
 const py = `
+import faulthandler; faulthandler.dump_traceback_later(90, exit=False)  # hang diagnostics
 import sys; sys.path.insert(0, ${JSON.stringify(REPO)})
 import pdfblah.gui.server as S
 assert S.__file__.startswith(${JSON.stringify(REPO)}), "loaded wrong pdfblah: " + S.__file__
@@ -53,16 +54,16 @@ await new Promise((res, rej) => {
 ok("gui server up on :" + PORT);
 
 const base = `http://127.0.0.1:${PORT}`;
-let browser;
+let browser, page;
+let pageErrors = [];
 try {
   browser = await puppeteer.launch({
     executablePath: CHROME,
     headless: "new",
     args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu", "--window-size=1400,900"],
   });
-  const page = await browser.newPage();
+  page = await browser.newPage();
   await page.setViewport({ width: 1400, height: 900 });
-  const pageErrors = [];
   page.on("pageerror", (e) => pageErrors.push(String(e)));
   // real JS console errors still count; the generic "Failed to load resource" line is just
   // Chrome echoing an HTTP status — covered precisely by the response listener below.
@@ -70,6 +71,11 @@ try {
   // ignore the browser's automatic /favicon.ico request (app-wide, not page-emitted)
   page.on("requestfailed", (r) => { if (!/favicon\.ico$/.test(r.url())) pageErrors.push("requestfailed: " + r.url()); });
   page.on("response", (r) => { if (r.status() >= 400 && !/favicon\.ico$/.test(r.url())) pageErrors.push(`http ${r.status()}: ${r.url()}`); });
+  if (process.env.E2E_TRACE) { // request timeline for debugging hangs
+    const t0 = Date.now(); const ts = () => ((Date.now() - t0) / 1000).toFixed(1);
+    page.on("request", (r) => { if (/wb[a-z]+$/.test(r.url())) console.log("   ", ts(), ">>", r.url().split("/").pop()); });
+    page.on("response", (r) => { if (/wb[a-z]+$/.test(r.url())) console.log("   ", ts(), "<<", r.url().split("/").pop(), r.status()); });
+  }
 
   await page.goto(`${base}/workbench`, { waitUntil: "networkidle0", timeout: 20000 });
 
@@ -416,12 +422,16 @@ try {
   ok("Esc closes the Recipes menu");
 
   // clear the stack, then load the recipe back
+  const srcPreClear = await stageSrc();
   while (await page.$(".wb-step")) {
     await page.evaluate(() => document.querySelector(".wb-step .wb-srm").click());
     await new Promise((r) => setTimeout(r, 120));
   }
   await page.waitForSelector(".wb-stackhint", { timeout: 25000 });
   ok("stack cleared (hint card back)");
+  // the empty-rules render must LAND before we snapshot srcEmpty: the loaded stack's
+  // After is pixel-identical to the pre-clear stack's, so a stale snapshot never looks "new"
+  await waitNewStage(srcPreClear, "empty-stack render landed");
   const srcEmpty = await stageSrc();
   await page.click(".wb-recbtn");
   await page.waitForFunction(() => [...document.querySelectorAll(".wb-recn")].some((n) => n.textContent === "client handoff"), { timeout: 25000 });
@@ -553,6 +563,49 @@ try {
   await page.evaluate(() => document.querySelector(".wb-step .wb-srm").click());
   await page.waitForSelector(".wb-stackhint", { timeout: 25000 });
 
+  // ================= Clean scan: the scan-file fast path =================
+  // dirtyscan.pdf (gray paper, gradient, stain) gets the scan badge, the empty-stack
+  // hint pivots to a one-click "Clean it up", and the After view whitens visibly.
+  await (await page.$(".wb-fileinput")).uploadFile(`${SCRATCH}/dirtyscan.pdf`);
+  await page.waitForFunction(() => [...document.querySelectorAll(".wb-fn")].some((n) => n.textContent === "dirtyscan.pdf")
+    && ![...document.querySelectorAll(".wb-file")].some((r) => /reading…/.test(r.textContent)), { timeout: 30000 });
+  await page.evaluate(() => {
+    [...document.querySelectorAll(".wb-file")].find((r) => r.querySelector(".wb-fn")?.textContent === "dirtyscan.pdf")
+      .querySelector(".wb-fmeta").click();
+  });
+  await page.waitForFunction(() => /dirtyscan\.pdf/.test(document.querySelector(".wb-vname")?.textContent || ""), { timeout: 25000 });
+  const hintTxt = await page.$eval(".wb-stackhint", (n) => n.textContent);
+  if (/looks like a scan/.test(hintTxt) && /Clean it up/.test(hintTxt)) ok("empty-stack hint pivots for scans");
+  else fail("scan hint missing: " + hintTxt);
+  const srcDirty = await stageSrc();
+  await page.click(".wb-stackhint .wb-fixbtn");
+  await page.waitForSelector(".wb-step", { timeout: 25000 });
+  const cleanTitle = await page.$eval(".wb-step .wb-stitle", (n) => n.textContent);
+  if (cleanTitle === "Clean scan") ok("Clean it up → Clean scan edit added"); else fail("added: " + cleanTitle);
+  await waitNewStage(srcDirty, "After preview whitens the scan");
+  // the After stage really is mostly pure white now (sampled from the rendered PNG)
+  const whiteShare = await page.$eval(".wb-page", (img) => {
+    const c = document.createElement("canvas"); c.width = img.naturalWidth; c.height = img.naturalHeight;
+    const ctx = c.getContext("2d"); ctx.drawImage(img, 0, 0);
+    const d = ctx.getImageData(0, 0, c.width, c.height).data;
+    let w = 0; for (let i = 0; i < d.length; i += 4) if (d[i] >= 250 && d[i + 1] >= 250 && d[i + 2] >= 250) w++;
+    return w / (d.length / 4);
+  });
+  if (whiteShare > 0.8) ok(`cleaned preview is ${Math.round(whiteShare * 100)}% white`);
+  else fail(`cleaned preview only ${Math.round(whiteShare * 100)}% white`);
+  const cleanSum = await page.$eval(".wb-step .wb-ssum", (n) => n.textContent);
+  if (/standard/.test(cleanSum)) ok(`clean summary shows strength (${cleanSum})`); else fail("clean summary: " + cleanSum);
+  await page.screenshot({ path: `${SCRATCH}/shot-11-clean-scan.png` });
+  await page.evaluate(() => document.querySelector(".wb-step .wb-srm").click());
+  await page.waitForSelector(".wb-stackhint", { timeout: 25000 });
+  await page.evaluate(() => {
+    [...document.querySelectorAll(".wb-file")].find((r) => r.querySelector(".wb-fn")?.textContent === "dirtyscan.pdf")
+      .querySelector(".wb-frm").click();
+  });
+  await page.waitForFunction(() => ![...document.querySelectorAll(".wb-fn")].some((n) => n.textContent === "dirtyscan.pdf"), { timeout: 25000 });
+  await page.waitForFunction(() => !/looks like a scan/.test(document.querySelector(".wb-stackhint")?.textContent || ""), { timeout: 25000 });
+  ok("removing the scan restores the standard hint");
+
   // the local app must never show a price line (pricing is hosted-only)
   const quoteShown = await page.$eval(".wb-quote", (n) => !n.hidden).catch(() => false);
   if (!quoteShown) ok("open-core boundary: no price line in the local app"); else fail("price line visible locally!");
@@ -563,6 +616,8 @@ try {
   console.log(process.exitCode ? "\n=== VISUAL VERIFY: FAILURES ABOVE ===" : "\n=== VISUAL VERIFY: ALL CHECKS PASSED ===");
 } catch (e) {
   fail("driver threw: " + (e.stack || e.message));
+  if (pageErrors.length) console.error("--- page/console errors ---\n   " + pageErrors.join("\n   "));
+  if (page) await page.screenshot({ path: `${SCRATCH}/shot-CRASH.png` }).catch(() => {});
 } finally {
   if (serverExited) fail(`gui server DIED mid-run: exit=${serverExited.c} sig=${serverExited.sig}`);
   if (serverErr.trim()) console.error("--- server stderr ---\n" + serverErr.slice(-4000));

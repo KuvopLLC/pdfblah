@@ -194,6 +194,20 @@ pdfblah compare a.pdf b.pdf --visual --out-dir diff/
 pdfblah signatures in.pdf --validate         # read/validate (needs pdfblah[sign])
 ```
 
+**Clean scans** (white paper, crisp ink — made for sheet music, works on any scan)
+
+```sh
+pdfblah clean scan.pdf out.pdf                   # background -> pure #FFFFFF
+pdfblah clean a.pdf b.pdf c.pdf -o cleaned/      # batch: one cleaned PDF per input
+pdfblah clean scan.pdf out.pdf --strength strong # dark or stained pages
+pdfblah clean scan.pdf out.pdf --bilevel         # pure 1-bit black & white
+```
+
+Estimates each page's background (paper tone, lighting, stains), divides it out, and
+remaps levels so paper becomes exactly white while ink keeps its anti-aliased edges.
+`--dpi` sets output resolution (default 300). A 10-page scan takes a few seconds.
+Output pages are re-rendered images; run `ocr` after if you want selectable text.
+
 **Convert and OCR** (need system tools; run `pdfblah doctor` to check/install them)
 
 ```sh

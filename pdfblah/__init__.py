@@ -21,6 +21,7 @@ from .extract import render as render_pages, extract_text, extract_images
 from .security import protect, unlock, attachments, optimize
 from .stamp import watermark, stamp, number, bates
 from .forms import list_fields as form_list, fill as form_fill
+from .clean import clean as clean_scan
 from .compare import compare as compare_pdfs
 from .signatures import list_signatures, validate as validate_signatures
 from .convert import convert, pdf_to_word, office_to_pdf
@@ -40,6 +41,7 @@ __all__ = [
     # marks
     "watermark", "stamp", "number", "bates",
     # forms / compare / signatures
+    "clean_scan",
     "form_list", "form_fill", "compare_pdfs", "list_signatures", "validate_signatures",
     # convert / ocr
     "convert", "pdf_to_word", "office_to_pdf", "ocr",

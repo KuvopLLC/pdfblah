@@ -27,7 +27,7 @@ dependencies = ["pdfplumber>=0.11", "pikepdf>=8", "python-stdnum>=1.19", "Faker>
 [project.optional-dependencies]
 # preview rendering (used by the hosted engine). The CLI and the local `pdfblah gui`
 # browser app run on the base dependencies alone.
-app = ["Pillow>=10", "pypdfium2>=4"]
+app = ["Pillow>=10", "pypdfium2>=4", "numpy>=1.24"]
 # validating digital signatures (pdfblah signatures --validate); reading them needs nothing
 sign = ["pyhanko>=0.20"]
 # OCR a scanned PDF into a searchable one. Also needs the system tools Tesseract +
@@ -36,7 +36,7 @@ ocr = ["ocrmypdf>=16"]
 # PDF <-> Word conversion. `convert` to PDF from office formats also needs LibreOffice
 # installed (see `pdfblah doctor`); PDF -> DOCX needs only pdf2docx.
 convert = ["pdf2docx>=0.5"]
-test = ["pytest", "Pillow>=10", "pypdfium2>=4"]
+test = ["pytest", "Pillow>=10", "pypdfium2>=4", "numpy>=1.24"]
 
 [project.urls]
 Homepage = "https://pdfblah.com"

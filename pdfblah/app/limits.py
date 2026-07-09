@@ -8,7 +8,7 @@ import pikepdf
 META_FIELDS = {"Title", "Author", "Subject", "Keywords", "Creator", "Producer"}
 DETECTOR_TYPES = {"email", "iban", "credit_card", "ssn", "phone", "date", "amount"}
 # edit actions that don't take a "find" (marks, page ops, protect, optimize)
-NOFIND_ACTIONS = {"watermark", "number", "bates", "stamp", "pages", "rotate", "crop",
+NOFIND_ACTIONS = {"watermark", "number", "bates", "stamp", "pages", "rotate", "crop", "clean",
                   "protect", "optimize"}
 
 

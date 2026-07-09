@@ -113,6 +113,7 @@ export function mountWorkbench(root, host = {}) {
       rec.id = d.fileId; rec.pages = d.pages; rec.isScan = d.isScan; rec.analysis = d.analysis;
       if (!S.activeId) { S.activeId = rec.id; S.page = 1; }
       renderFiles();
+      if (!S.stack.length) renderStack(); // the empty-stack hint adapts to scans
       if (S.activeId === rec.id) { renderPagesRail(); renderCenter(); }
     }
   }
@@ -126,7 +127,7 @@ export function mountWorkbench(root, host = {}) {
     S.files.forEach((rec) => {
       const row = el("div", "wb-file" + (rec.id && rec.id === S.activeId ? " active" : "") + (rec.error ? " err" : ""));
       const chk = el("label", "wb-inc"); const cb = el("input"); cb.type = "checkbox"; cb.checked = rec.included !== false; cb.disabled = !rec.id;
-      cb.title = "include in output"; cb.onchange = () => { rec.included = cb.checked; row.classList.toggle("muted", !cb.checked); renderOutput(); };
+      cb.title = "include in output"; cb.onchange = () => { rec.included = cb.checked; row.classList.toggle("muted", !cb.checked); if (!S.stack.length) renderStack(); else renderOutput(); };
       chk.appendChild(cb);
       const sub = rec.loading ? "reading…" : rec.error ? esc(rec.error)
         : `${rec.pages} page${rec.pages === 1 ? "" : "s"} · ${fmtSize(rec.size)}${rec.isScan ? ' <span class="wb-scan">scan</span>' : ""}`;
@@ -138,6 +139,7 @@ export function mountWorkbench(root, host = {}) {
         S.files = S.files.filter((x) => x !== rec);
         if (S.activeId === rec.id) { const first = S.files.find((x) => x.id); S.activeId = first ? first.id : null; S.page = 1; S.afterPages = null; }
         renderFiles(); renderPagesRail(); renderCenter();
+        if (!S.stack.length) renderStack();
         if (inspectVisible()) renderInspect();
       };
       row.append(chk, meta, rm);
@@ -267,6 +269,12 @@ export function mountWorkbench(root, host = {}) {
       form: (body, st) => { fSel(body, st, "Field", "metaField", ["Title", "Author", "Subject", "Keywords", "Creator", "Producer"].map((f) => [f, f])); fText(body, st, "Value", "metaValue", ""); } },
     stripmeta: { title: "Strip metadata", blurb: "remove all document info",
       cfg: () => ({}), summary: () => "all metadata removed", rule: () => ({ action: "stripmeta" }), form: () => {} },
+    clean: { title: "Clean scan", blurb: "pure white pages, crisp ink",
+      cfg: () => ({ strength: "standard", bilevel: false }),
+      summary: (c) => `${c.strength}${c.bilevel ? " · pure black & white" : ""}`,
+      rule: (c) => ({ action: "clean", strength: c.strength, ...(c.bilevel ? { bilevel: true } : {}) }),
+      form: (body, st) => { fSel(body, st, "Strength", "strength", [["gentle", "gentle — light shadows only"], ["standard", "standard — most scans"], ["strong", "strong — dark or stained pages"]]);
+        fChips(body, st, "", [["bilevel", "Pure black & white"]]); } },
   };
 
   // ---------- the Stack: form field helpers ----------
@@ -419,8 +427,18 @@ export function mountWorkbench(root, host = {}) {
     countEl.hidden = !S.stack.length; countEl.textContent = S.stack.length;
     renderOutput();
     if (!S.stack.length) {
-      stepsEl.appendChild(el("div", "wb-stackhint",
-        `Add your first edit: <b>Replace</b>, <b>Redact</b>, <b>Watermark</b>… Edits apply top to bottom, and the <b>After</b> view updates as you type.`));
+      // scanned files get a one-click path to the edit made for them
+      if (S.files.some((x) => x.id && x.included !== false && x.isScan)) {
+        const hint = el("div", "wb-stackhint",
+          `This looks like a scan. <b>Clean scan</b> makes the paper pure white and the ink crisp. `);
+        const b = el("button", "wb-fixbtn", "Clean it up"); b.type = "button";
+        b.onclick = () => addStep("clean");
+        hint.appendChild(b);
+        stepsEl.appendChild(hint);
+      } else {
+        stepsEl.appendChild(el("div", "wb-stackhint",
+          `Add your first edit: <b>Replace</b>, <b>Redact</b>, <b>Watermark</b>… Edits apply top to bottom, and the <b>After</b> view updates as you type.`));
+      }
     }
     S.stack.forEach((st, i) => {
       const { text, warn, broken, full } = summaryFor(st);
@@ -473,7 +491,7 @@ export function mountWorkbench(root, host = {}) {
 
   const MENU_GROUPS = [
     ["Text", ["replace", "remove", "redact", "scrub", "anonymize"]],
-    ["Pages & marks", ["watermark", "number", "bates", "stamp", "pages", "rotate", "crop"]],
+    ["Pages & marks", ["watermark", "number", "bates", "stamp", "pages", "rotate", "crop", "clean"]],
     ["Document", ["meta", "stripmeta"]],
   ];
   function renderStepMenu() {

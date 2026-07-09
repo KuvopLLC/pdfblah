@@ -42,14 +42,18 @@ def compare(a_path, b_path, visual=False, out_dir=None, dpi=100):
 
 def _visual_diff(a_path, b_path, out_dir, dpi):
     import pypdfium2 as pdfium
+
+    from ._pdfium import PDFIUM_LOCK
     from PIL import Image, ImageChops
 
-    da, db = pdfium.PdfDocument(a_path), pdfium.PdfDocument(b_path)
+    PDFIUM_LOCK.acquire()
+    da = db = None
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
     scale = dpi / 72.0
     out = []
     try:
+        da, db = pdfium.PdfDocument(a_path), pdfium.PdfDocument(b_path)
         for i in range(max(len(da), len(db))):
             if i >= len(da) or i >= len(db):
                 out.append({"page": i + 1, "diff": 1.0, "note": "page only in one file"})
@@ -71,6 +75,9 @@ def _visual_diff(a_path, b_path, out_dir, dpi):
                 entry["image"] = p
             out.append(entry)
     finally:
-        da.close()
-        db.close()
+        if da is not None:
+            da.close()
+        if db is not None:
+            db.close()
+        PDFIUM_LOCK.release()
     return out

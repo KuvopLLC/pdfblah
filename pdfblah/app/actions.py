@@ -45,6 +45,11 @@ def _run(action, cur, nxt, rule):
         r = process(cur, nxt, find, rep, None, scope, ci, word, "auto", regex,
                     substitute=bool(rule.get("substituteFont")))
         return r, r.get("boxes")
+    if action == "clean":
+        from ..clean import clean
+        r = clean(cur, nxt, dpi=int(rule.get("dpi", 300)),
+                  strength=rule.get("strength", "standard"), bilevel=bool(rule.get("bilevel")))
+        return r, None
     if action == "scrub":
         return _norm(scrub(cur, nxt, rule.get("types") or None, None, True), "scrubbed"), None
     if action == "anonymize":

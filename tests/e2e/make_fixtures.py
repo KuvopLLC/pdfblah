@@ -50,6 +50,23 @@ def main(outdir):
     img.save(f"{outdir}/scan_src.png")
     img.save(f"{outdir}/scanned.pdf", "PDF")
 
+    # dirtyscan.pdf: a bad scan (gray paper, lighting gradient, stain, black marks);
+    # image-only so it gets the scan badge and the Clean-scan nudge
+    img = Image.new("L", (600, 800))
+    px = img.load()
+    for y in range(800):
+        for x in range(0, 600, 4):
+            v = int(210 - (x + y) / 28)
+            for k in range(4):
+                px[min(x + k, 599), y] = v
+    dr = ImageDraw.Draw(img)
+    dr.ellipse([380, 520, 560, 660], fill=185)
+    for y in range(120, 700, 90):
+        for k in range(5):
+            dr.line([60, y + k * 8, 540, y + k * 8], fill=0, width=2)
+        dr.ellipse([150, y + 8, 166, y + 20], fill=0)
+    img.convert("RGB").save(f"{outdir}/dirtyscan.pdf", "PDF")
+
     # fontrefuse.pdf: text in an EMBEDDED SUBSET font (reportlab's bundled Vera), so any
     # replacement using glyphs outside the subset (e.g. "Ωmega Ltd") is detect-and-refused
     pdfmetrics.registerFont(TTFont("Vera", os.path.join(os.path.dirname(reportlab.__file__), "fonts", "Vera.ttf")))

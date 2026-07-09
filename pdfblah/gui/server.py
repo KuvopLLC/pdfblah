@@ -182,10 +182,10 @@ class _Handler(BaseHTTPRequestHandler):
     # ---- GET ----
     def do_GET(self):
         path = self.path.split("?", 1)[0]
-        if path in ("/", "/index.html"):
-            self._send(_desktop_index(), _TYPES[".html"]); return
-        if path in ("/workbench", "/workbench.html"):
+        if path in ("/", "/index.html", "/workbench", "/workbench.html"):
             self._send(_desktop_workbench(), _TYPES[".html"]); return
+        if path in ("/single", "/single.html"):  # the original one-file page
+            self._send(_desktop_index(), _TYPES[".html"]); return
         name = path.lstrip("/")
         if name in _ASSETS:
             ext = "." + name.rsplit(".", 1)[-1]

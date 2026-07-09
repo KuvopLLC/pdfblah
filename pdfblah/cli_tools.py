@@ -2,6 +2,7 @@
 signatures). Each returns a process exit code. Registered into pdfblah.cli.HANDLERS."""
 import argparse
 import json
+import os
 import sys
 
 from . import (
@@ -118,6 +119,34 @@ def _render_main(argv):
     a = ap.parse_args(argv)
     r = render_pages(a.input, a.out_dir, pages=a.pages, dpi=a.dpi, fmt=a.format)
     return _emit(r, lambda: f"rendered {r['pages']} page(s) at {a.dpi} dpi in {a.out_dir}", a.json)
+
+
+def _clean_main(argv):
+    ap = _ap("clean", "Clean scanned pages: pure white background, crisp ink. "
+                      "One file (in.pdf out.pdf) or a batch (a.pdf b.pdf ... -o dir/).")
+    ap.add_argument("inputs", nargs="+")
+    ap.add_argument("-o", "--out", help="output PDF (single input) or directory (batch)")
+    ap.add_argument("--dpi", type=int, default=300)
+    ap.add_argument("--strength", default="standard", choices=["gentle", "standard", "strong"])
+    ap.add_argument("--bilevel", action="store_true", help="pure 1-bit output (smallest files)")
+    ap.add_argument("--json", action="store_true")
+    a = ap.parse_args(argv)
+    from .clean import clean
+    # `pdfblah clean in.pdf out.pdf` is the natural single-file spelling
+    if len(a.inputs) == 2 and a.inputs[1].lower().endswith(".pdf") and not os.path.exists(a.inputs[1]) and not a.out:
+        r = clean(a.inputs[0], a.inputs[1], dpi=a.dpi, strength=a.strength, bilevel=a.bilevel)
+        return _emit(r, lambda: f"cleaned {r['pages']} page(s) -> {a.inputs[1]} ({r['white_pct']}% pure white)", a.json)
+    outdir = a.out or "cleaned"
+    os.makedirs(outdir, exist_ok=True)
+    results = []
+    for src_pdf in a.inputs:
+        dst = os.path.join(outdir, os.path.basename(src_pdf)[:-4] + "-clean.pdf")
+        r = clean(src_pdf, dst, dpi=a.dpi, strength=a.strength, bilevel=a.bilevel)
+        results.append((src_pdf, r))
+        print(("ok  " if r.get("ok") else "ERR ") + os.path.basename(src_pdf)
+              + (f" -> {dst} ({r['white_pct']}% white)" if r.get("ok") else f": {r.get('error')}"))
+    bad = [s for s, r in results if not r.get("ok")]
+    return 1 if bad else 0
 
 
 def _extract_main(argv):
@@ -419,7 +448,7 @@ def _doctor_main(argv):
 
 TOOL_HANDLERS = {
     "combine": _combine_main, "split": _split_main, "pages": _pages_main,
-    "rotate": _rotate_main, "crop": _crop_main, "render": _render_main,
+    "rotate": _rotate_main, "crop": _crop_main, "render": _render_main, "clean": _clean_main,
     "extract": _extract_main, "protect": _protect_main, "unlock": _unlock_main,
     "attachments": _attachments_main, "optimize": _optimize_main,
     "watermark": _watermark_main, "stamp": _stamp_main, "number": _number_main,

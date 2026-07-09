@@ -200,6 +200,22 @@ def test_inspect_and_extract(wb, tmp_path):
     assert _post(base, "wbextract", {"session": sid, "file": fid, "name": "nope"})["ok"] is False
 
 
+def test_clean_scan_step(wb, tmp_path):
+    """A {"action": "clean"} rule previews and downloads like any other edit."""
+    base, sid, _fid, _ = wb
+    dirty = tmp_path / "dirty.pdf"
+    Image.new("RGB", (300, 400), (205, 200, 190)).save(str(dirty), "PDF")  # gray "paper"
+    add = _post(base, "wbadd", {"session": sid, "pdf": b64(str(dirty)), "name": "dirty.pdf"})
+    assert add["ok"] and add["isScan"] is True
+    rules = [{"action": "clean", "strength": "strong"}]
+    before = _post(base, "wbpreview", {"session": sid, "file": add["fileId"], "page": 1, "dpi": 60, "rules": []})
+    after = _post(base, "wbpreview", {"session": sid, "file": add["fileId"], "page": 1, "dpi": 60, "rules": rules})
+    assert after["ok"] and after["report"]["applied"] == 1
+    assert after["image"] != before["image"]
+    out = _post(base, "wboutput", {"session": sid, "files": [add["fileId"]], "rules": rules, "format": "pdf"})
+    assert out["ok"] and _download(base, out["fileId"])[:5] == b"%PDF-"
+
+
 def test_remove_cleans_after_file_and_end_drops_session(wb):
     base, sid, fid, _ = wb
     _post(base, "wbpreview", {"session": sid, "file": fid, "page": 1, "dpi": 60, "rules": REPLACE})

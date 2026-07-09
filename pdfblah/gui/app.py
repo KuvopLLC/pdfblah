@@ -49,8 +49,10 @@ def selftest():
 
     try:
         idx = urllib.request.urlopen(url, timeout=15).read()
-        assert b'id="app"' in idx, "local index is missing the app mount point"
-        for name in ("app.js", "gate.mjs", "app.css"):
+        assert b"workbench" in idx, "local index is not the workbench"
+        single = urllib.request.urlopen(base + "/single", timeout=15).read()
+        assert b'id="app"' in single, "single-file page is missing its mount point"
+        for name in ("app.js", "gate.mjs", "app.css", "workbench.js", "workbench.css"):
             assert urllib.request.urlopen(base + "/" + name, timeout=15).read(), name
 
         pdf = pikepdf.new()

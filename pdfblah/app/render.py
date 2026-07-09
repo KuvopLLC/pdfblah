@@ -28,9 +28,12 @@ def render_preview(pdf_path, out_png, pages=(1,), dpi=110, max_h=1600,
         raise RuntimeError(
             'preview rendering needs the app extra: pip install "pdfblah[app]"'
         )
+    from .._pdfium import PDFIUM_LOCK
     scale = dpi / 72.0
-    doc = pdfium.PdfDocument(pdf_path)
+    PDFIUM_LOCK.acquire()
+    doc = None
     try:
+        doc = pdfium.PdfDocument(pdf_path)
         imgs = []
         for p in pages:
             page = doc[p - 1]
@@ -53,7 +56,9 @@ def render_preview(pdf_path, out_png, pages=(1,), dpi=110, max_h=1600,
             _watermark(canvas)
         canvas.save(out_png, "PNG", optimize=True)
     finally:
-        doc.close()
+        if doc is not None:
+            doc.close()
+        PDFIUM_LOCK.release()
     return out_png
 
 

@@ -8,9 +8,9 @@ export function escapeHtml(s) {
 }
 
 export const ACTIONS = ["replace", "redact", "remove", "meta", "scrub", "anonymize", "stripmeta",
-  "watermark", "number", "bates", "stamp", "pages", "rotate", "crop", "protect", "optimize"];
+  "watermark", "number", "bates", "stamp", "pages", "rotate", "crop", "clean", "protect", "optimize"];
 // edit actions that take no "find" (marks, page ops, protect, optimize)
-export const NOFIND_ACTIONS = ["watermark", "number", "bates", "stamp", "pages", "rotate", "crop", "protect", "optimize"];
+export const NOFIND_ACTIONS = ["watermark", "number", "bates", "stamp", "pages", "rotate", "crop", "clean", "protect", "optimize"];
 export const META_FIELDS = ["Title", "Author", "Subject", "Keywords", "Creator", "Producer"];
 export const DETECTOR_TYPES = ["email", "iban", "credit_card", "ssn", "phone", "date", "amount"];
 
