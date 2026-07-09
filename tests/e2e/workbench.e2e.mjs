@@ -482,6 +482,11 @@ try {
   const dlState = await page.$eval(".wb-download", (b) => ({ disabled: b.disabled, label: b.textContent }));
   if (dlState.disabled && dlState.label === "Nothing to download") ok("no-op guard: Download locked with an honest label");
   else fail("download state: " + JSON.stringify(dlState));
+  await page.waitForFunction(() => {
+    const e = document.querySelector(".wb-errbar");
+    return e && !e.hidden && e.classList.contains("info") && /After matches Before/.test(e.textContent);
+  }, { timeout: 30000 });
+  ok("center explains the dead After view (info banner)");
   await page.screenshot({ path: `${SCRATCH}/shot-9-font-refused.png` });
 
   // --- the substitution prompt: one explicit click, honest report ---
@@ -517,6 +522,8 @@ try {
   }, { timeout: 30000 });
   await page.waitForFunction(() => !document.querySelector(".wb-step.brk"), { timeout: 30000 });
   ok("in-subset replacement clears the broken state and unlocks Download");
+  await page.waitForFunction(() => document.querySelector(".wb-errbar").hidden, { timeout: 30000 });
+  ok("info banner clears once a step applies");
 
   // ================= CID fonts: honest refusal, no dead-end offers =================
   // cidfont.pdf is Identity-H (glyph IDs). Rewriting AND substitution are impossible,

@@ -225,3 +225,8 @@
 .wb-quote { text-align: center; font-size: 12px; color: var(--body); margin-bottom: 8px; }
 .wb-quote a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 .wb-quote a:hover { color: var(--primary); }
+
+/* broken cards show the whole reason, not an ellipsis */
+.wb-step.brk .wb-ssum { white-space: normal; overflow: visible; text-overflow: unset; line-height: 1.4; }
+/* the After-matches-Before note is information, not an error */
+.wb-errbar.info { background: #fdf3e4; color: #8a5a12; border-bottom-color: #f0dcba; }

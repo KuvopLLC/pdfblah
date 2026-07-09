@@ -812,11 +812,14 @@ export function mountWorkbench(root, host = {}) {
     if (!d.ok) {
       // keep the last good page on screen; a mid-typed rule (half a regex) shouldn't blank
       // the document — surface the error in a slim banner instead
-      if (img) { errbar.textContent = d.error || "could not render"; errbar.hidden = false; }
+      if (img) { errbar.textContent = d.error || "could not render"; errbar.classList.remove("info"); errbar.hidden = false; }
       else stageEl.innerHTML = `<div class="wb-empty">${esc(d.error || "could not render")}</div>`;
       return;
     }
-    errbar.hidden = true;
+    const noopNow = S.view === "after" && rules.length > 0 && d.report && d.report.applied === 0;
+    errbar.textContent = noopNow ? "No step applies to this file yet, so After matches Before." : "";
+    errbar.classList.toggle("info", noopNow);
+    errbar.hidden = !noopNow;
     if (!img || img.src !== d.image) {
       // decode off-screen first, then swap src in place: no white flash, and the stage keeps
       // its scroll position on a same-page re-render (tweaking a footer step stays put).
