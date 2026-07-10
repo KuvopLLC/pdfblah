@@ -402,11 +402,16 @@ class _Handler(BaseHTTPRequestHandler):
             afters = [(f["name"], self._wb_after(s, f, rules)[0]) for f in recs]
             edited = bool(rules) or bool(extras)
             if merge:
-                m = os.path.join(outdir, "pdfblah-merged.pdf")
-                r = combine([path for _, path in afters], m)
+                toc = bool(opts.get("toc")) or bool(opts.get("tabs"))
+                mname = "pdfblah-binder.pdf" if toc else "pdfblah-merged.pdf"
+                m = os.path.join(outdir, mname)
+                r = combine([path for _, path in afters], m, toc=toc,
+                            tabs=bool(opts.get("tabs")),
+                            toc_font=(opts.get("tocFont") or "sans"),
+                            fallback_names=[name for name, _ in afters])
                 if not r.get("ok"):
                     self._json(r); return
-                afters = [("pdfblah-merged.pdf", m)]
+                afters = [(mname, m)]
             if fmt == "pdf":
                 for name, path in afters:
                     out_name = stem(name) + ("-edited.pdf" if edited and not merge else ".pdf")

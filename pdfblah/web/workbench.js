@@ -24,7 +24,7 @@ export function mountWorkbench(root, host = {}) {
   // step can change it); null until the first After preview.
   const S = { session: null, files: [], activeId: null, page: 1, dpi: 128, view: "after",
               stack: [], expanded: null, afterPages: null, zoom: "fit", formats: {},
-              out: { format: "pdf", merge: false },
+              out: { format: "pdf", merge: false, toc: false, tabs: false, tocFont: "sans" },
               rendering: false,     // a preview request is in flight (drives the veil + locks Download)
               lastApplied: null };  // report.applied for the ACTIVE file's last After render
   let uidSeq = 0;
@@ -71,6 +71,9 @@ export function mountWorkbench(root, host = {}) {
           <input type="password" class="wb-fin wb-opw" placeholder="password (optional)" autocomplete="new-password">
           <select class="wb-fin wb-oopt"><option value="">full quality</option><option value="150">compress · 150 dpi</option><option value="96">compress · 96 dpi</option></select>
           <button type="button" class="wb-chip wb-omerge">Merge into one PDF</button>
+          <button type="button" class="wb-chip wb-otoc" hidden>Table of contents</button>
+          <button type="button" class="wb-chip wb-otabs" hidden>Numbered tabs</button>
+          <select class="wb-fin wb-otocfont" hidden><option value="sans">contents in Helvetica</option><option value="serif">contents in Times</option></select>
         </div>
         <div class="wb-quote" hidden></div>
         <button class="wb-download" disabled>Download</button>
@@ -529,6 +532,9 @@ export function mountWorkbench(root, host = {}) {
         fmts.appendChild(b);
       });
       $(".wb-omerge").onclick = () => { S.out.merge = !S.out.merge; renderOutput(); };
+      $(".wb-otoc").onclick = () => { S.out.toc = !S.out.toc; renderOutput(); };
+      $(".wb-otabs").onclick = () => { S.out.tabs = !S.out.tabs; if (S.out.tabs) S.out.toc = true; renderOutput(); };
+      $(".wb-otocfont").onchange = (e) => { S.out.tocFont = e.target.value; };
       $(".wb-download").onclick = downloadOutput;
     }
     fmts.querySelectorAll(".wb-fmt").forEach((b) => {
@@ -543,6 +549,13 @@ export function mountWorkbench(root, host = {}) {
     const mg = $(".wb-omerge");
     mg.hidden = !(isPdf && inc.length > 1);
     mg.classList.toggle("on", S.out.merge && !mg.hidden);
+    // the binder options ride on merge: a clickable Contents page, numbered edge tabs
+    const merging = S.out.merge && !mg.hidden;
+    const tocB = $(".wb-otoc"), tabsB = $(".wb-otabs"), fontS = $(".wb-otocfont");
+    tocB.hidden = tabsB.hidden = !merging;
+    fontS.hidden = !(merging && S.out.toc);
+    tocB.classList.toggle("on", merging && S.out.toc);
+    tabsB.classList.toggle("on", merging && S.out.tabs);
     // pricing is the HOST's business (the hosted site quotes, the local app never
     // shows money): an optional hook returns {text, href?, title?} or null
     const qEl = $(".wb-quote");
@@ -550,7 +563,9 @@ export function mountWorkbench(root, host = {}) {
       const q = host.quote({ docs: inc.map((x) => ({ pages: x.pages || 1 })),
                              rules: stackRules().rules, options: {
                                password: $(".wb-opw").value || undefined,
-                               downsampleDpi: $(".wb-oopt").value || undefined },
+                               downsampleDpi: $(".wb-oopt").value || undefined,
+                               toc: (S.out.merge && S.out.toc) || undefined,
+                               tabs: (S.out.merge && S.out.tabs) || undefined },
                              format: S.out.format, merge: S.out.merge });
       qEl.hidden = !q || !inc.length;
       if (q && inc.length) {
@@ -568,7 +583,7 @@ export function mountWorkbench(root, host = {}) {
     dl.textContent = !inc.length ? "Download"
       : S.rendering ? "Checking…"
       : (noop && inc.length === 1) ? "Nothing to download"
-      : (isPdf && S.out.merge && inc.length > 1) ? "Download merged PDF"
+      : (isPdf && S.out.merge && inc.length > 1) ? (S.out.toc ? "Download binder" : "Download merged PDF")
       : `Download ${inc.length} file${inc.length === 1 ? "" : "s"}`;
   }
   async function downloadOutput() {
@@ -578,7 +593,9 @@ export function mountWorkbench(root, host = {}) {
     const d = await post("wboutput", {
       session: S.session, files: inc.map((x) => x.id), rules: stackRules().rules,
       format: S.out.format, merge: S.out.merge,
-      options: { password: $(".wb-opw").value || undefined, downsampleDpi: $(".wb-oopt").value || undefined },
+      options: { password: $(".wb-opw").value || undefined, downsampleDpi: $(".wb-oopt").value || undefined,
+                 toc: (S.out.merge && S.out.toc) || undefined, tabs: (S.out.merge && S.out.tabs) || undefined,
+                 tocFont: (S.out.merge && S.out.toc && S.out.tocFont !== "sans") ? S.out.tocFont : undefined },
     });
     dl.classList.remove("busy"); dl.textContent = old;
     if (!d.ok) { $(".wb-outsum").textContent = d.error || "could not produce the output"; return; }

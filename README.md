@@ -160,6 +160,9 @@ reach for several tools to do. All keep your metadata intact.
 
 ```sh
 pdfblah combine a.pdf b.pdf c.pdf -o all.pdf     # concatenate
+pdfblah combine *.pdf -o binder.pdf --toc --tabs # a meeting binder: clickable Contents
+                                                 # page, bookmarks, numbered edge tabs
+                                                 # (--titles "A,B,C" --toc-font serif)
 pdfblah split in.pdf -o parts/ --every 1         # or --ranges 1-3 4-6
 pdfblah pages in.pdf out.pdf --keep 3,1,2        # keep / reorder (or --drop 4)
 pdfblah rotate in.pdf out.pdf --degrees 90 --pages 1-2

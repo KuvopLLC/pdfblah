@@ -154,6 +154,20 @@ def test_output_formats(wb, tmp_path):
     with pikepdf.open(str(mp)) as pdf:
         assert len(pdf.pages) == 4
 
+    # merge as a BINDER: a Contents page with clickable rows, bookmarks, edge tabs,
+    # and section titles from the files' display names (never the temp paths)
+    binder = _post(base, "wboutput", {"session": sid, "files": [fid, fid2], "rules": [],
+                                      "format": "pdf", "merge": True,
+                                      "options": {"toc": True, "tabs": True}})
+    assert binder["ok"] and binder["name"] == "pdfblah-binder.pdf"
+    bp = tmp_path / "binder.pdf"; bp.write_bytes(_download(base, binder["fileId"]))
+    with pikepdf.open(str(bp)) as pdf:
+        assert len(pdf.pages) == 5  # 1 ToC + 3 + 1
+        assert len(pdf.pages[0].get("/Annots", [])) == 2
+        with pdf.open_outline() as ol:
+            titles = [it.title for it in ol.root]
+        assert titles == ["Contents", "1. report", "2. b"]
+
     both = _post(base, "wboutput", {"session": sid, "files": [fid, fid2], "rules": REPLACE, "format": "pdf"})
     assert both["ok"] and both["name"] == "pdfblah-output.zip" and both["count"] == 2
     z = zipfile.ZipFile(io.BytesIO(_download(base, both["fileId"])))

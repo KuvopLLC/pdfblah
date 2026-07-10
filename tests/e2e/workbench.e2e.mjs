@@ -606,6 +606,35 @@ try {
   await page.waitForFunction(() => !/looks like a scan/.test(document.querySelector(".wb-stackhint")?.textContent || ""), { timeout: 25000 });
   ok("removing the scan restores the standard hint");
 
+  // ================= Binder: merge + Table of contents + tabs =================
+  // two included files -> Merge reveals the binder options; the download is a real
+  // binder PDF (ToC page up front, so page count = 1 + sum of the inputs)
+  await page.evaluate(() => { // re-include fontrefuse.pdf so two files are in the output
+    const row = [...document.querySelectorAll(".wb-file")].find((r) => r.querySelector(".wb-fn")?.textContent === "fontrefuse.pdf");
+    const cb = row.querySelector(".wb-inc input");
+    if (!cb.checked) cb.click();
+  });
+  await page.waitForFunction(() => !document.querySelector(".wb-omerge").hidden, { timeout: 10000 });
+  const tocHiddenBefore = await page.$eval(".wb-otoc", (n) => n.hidden);
+  if (tocHiddenBefore) ok("binder options hide until Merge is on"); else fail("ToC chip visible without merge");
+  await page.click(".wb-omerge");
+  await page.waitForFunction(() => !document.querySelector(".wb-otoc").hidden, { timeout: 5000 });
+  await page.click(".wb-otoc");
+  await page.click(".wb-otabs");
+  await page.waitForFunction(() => /Download binder/.test(document.querySelector(".wb-download").textContent), { timeout: 10000 });
+  ok("Merge + Table of contents + Numbered tabs → button says Download binder");
+  await page.waitForFunction(() => !document.querySelector(".wb-download").disabled, { timeout: 30000 });
+  await page.click(".wb-download");
+  const bpdf = await waitDl("pdfblah-binder.pdf", "binder download arrives");
+  if (bpdf && bpdf.subarray(0, 4).toString() === "%PDF") ok("binder is a real PDF"); else fail("binder not a PDF");
+  // undo the binder state so nothing downstream inherits it
+  await page.click(".wb-omerge");
+  await page.evaluate(() => {
+    const row = [...document.querySelectorAll(".wb-file")].find((r) => r.querySelector(".wb-fn")?.textContent === "fontrefuse.pdf");
+    const cb = row.querySelector(".wb-inc input");
+    if (cb.checked) cb.click();
+  });
+
   // the local app must never show a price line (pricing is hosted-only)
   const quoteShown = await page.$eval(".wb-quote", (n) => !n.hidden).catch(() => false);
   if (!quoteShown) ok("open-core boundary: no price line in the local app"); else fail("price line visible locally!");

@@ -49,24 +49,69 @@ def _carry_metadata(src, dst):
         pass
 
 
-def combine(inputs, output):
-    """Concatenate PDFs in order into one file. Metadata comes from the first input."""
+def combine(inputs, output, toc=False, titles=None, tabs=False, toc_title="Contents",
+            toc_font="sans", fallback_names=None):
+    """Concatenate PDFs in order into one file. Metadata comes from the first input.
+
+    With toc=True the output is a binder: a generated Contents page up front whose rows
+    click through to each document, an outline bookmark per document, and (with
+    tabs=True) a staggered numbered edge tab on each document's first page. `titles`
+    overrides section names (else each file's Title metadata, else its filename)."""
+    from io import BytesIO
+
+    from . import binder
+
     if not inputs:
         return {"ok": False, "error": "no input files"}
     dst = pikepdf.new()
     total = 0
+    starts, names = [], []  # per input: first page index (pre-ToC), section title
     with ExitStack() as stack:
         first = None
-        for path in inputs:
+        for k, path in enumerate(inputs):
             src = stack.enter_context(pikepdf.open(path))
             if first is None:
                 first = src
+            starts.append(total)
+            given = titles[k] if titles and k < len(titles) else None
+            # servers hand in temp paths; fallback_names carries the real display names
+            shown = fallback_names[k] if fallback_names and k < len(fallback_names) else path
+            names.append(binder.title_for(shown, doc_title=src.docinfo.get("/Title"), given=given))
             dst.pages.extend(src.pages)
             total += len(src.pages)
         _carry_metadata(first, dst)
+
+        toc_pages = 0
+        if toc:
+            w, h = binder.page_size(dst.pages[0])
+            toc_pages = binder.toc_page_count(len(inputs), h)
+            # labels are final page numbers, 1-based, counting the ToC pages themselves
+            entries = [(k + 1, names[k], starts[k] + toc_pages + 1) for k in range(len(inputs))]
+            toc_bytes, rects = binder.draw_toc(entries, w, h, toc_title=toc_title, font=toc_font)
+            tsrc = stack.enter_context(pikepdf.open(BytesIO(toc_bytes)))
+            for i, pg in enumerate(tsrc.pages):
+                dst.pages.insert(i, pg)
+            section_pages = [s + toc_pages for s in starts]
+            binder.add_links(dst, rects, entries, section_pages)
+            binder.add_outline(dst, entries, section_pages, toc_pages)
+            if tabs:
+                slots = min(len(inputs), 10)  # the stagger cycles after 10, like real tab sets
+                for k, p in enumerate(section_pages):
+                    page = dst.pages[p]
+                    pw, ph = binder.page_size(page)
+                    tab = stack.enter_context(pikepdf.open(
+                        BytesIO(binder.draw_tab(k + 1, pw, ph, k, slots, font=toc_font))))
+                    page.add_overlay(tab.pages[0])
+            total += toc_pages
         dst.save(output)
     dst.close()
-    return {"ok": True, "files": len(inputs), "pages": total, "output": output}
+    r = {"ok": True, "files": len(inputs), "pages": total, "output": output}
+    if toc:
+        r["toc_pages"] = toc_pages
+        r["sections"] = [{"number": k + 1, "title": names[k], "page": starts[k] + toc_pages + 1}
+                         for k in range(len(inputs))]
+        r["tabs"] = bool(tabs)
+    return r
 
 
 def split(input_path, out_dir, every=1, ranges=None, prefix=None):

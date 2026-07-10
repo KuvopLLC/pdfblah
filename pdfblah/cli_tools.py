@@ -44,13 +44,23 @@ def _ap(prog, desc):
 
 # ---------- structure ----------
 def _combine_main(argv):
-    ap = _ap("combine", "Concatenate several PDFs into one, in order.")
+    ap = _ap("combine", "Concatenate several PDFs into one, in order. With --toc the "
+                        "output is a binder: a clickable Contents page, a bookmark per "
+                        "document, and (with --tabs) numbered edge tabs.")
     ap.add_argument("inputs", nargs="+", help="input PDFs")
     ap.add_argument("-o", "--output", required=True)
+    ap.add_argument("--toc", action="store_true", help="add a clickable table of contents")
+    ap.add_argument("--tabs", action="store_true", help="numbered edge tab on each document's first page")
+    ap.add_argument("--titles", help="section titles, comma-separated (default: each file's Title metadata, else its filename)")
+    ap.add_argument("--toc-title", default="Contents")
+    ap.add_argument("--toc-font", default="sans", choices=["sans", "serif"])
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args(argv)
-    r = combine(a.inputs, a.output)
-    return _emit(r, lambda: f"combined {r['files']} files, {r['pages']} pages  ->  {a.output}", a.json)
+    titles = [t.strip() for t in a.titles.split(",")] if a.titles else None
+    r = combine(a.inputs, a.output, toc=a.toc or a.tabs, titles=titles, tabs=a.tabs,
+                toc_title=a.toc_title, toc_font=a.toc_font)
+    extra = f" + {r['toc_pages']}-page ToC" if r.get("ok") and r.get("toc_pages") else ""
+    return _emit(r, lambda: f"combined {r['files']} files, {r['pages']} pages{extra}  ->  {a.output}", a.json)
 
 
 def _split_main(argv):
