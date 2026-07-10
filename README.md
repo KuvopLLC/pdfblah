@@ -194,7 +194,8 @@ pdfblah compare a.pdf b.pdf --visual --out-dir diff/
 pdfblah signatures in.pdf --validate         # read/validate (needs pdfblah[sign])
 ```
 
-**Clean scans** (white paper, crisp ink — made for sheet music, works on any scan)
+**Clean scans** (white paper, crisp ink — made for sheet music, works on any scan;
+needs the render extra: `pip install "pdfblah[app]"`)
 
 ```sh
 pdfblah clean scan.pdf out.pdf                   # background -> pure #FFFFFF
@@ -207,6 +208,8 @@ Estimates each page's background (paper tone, lighting, stains), divides it out,
 remaps levels so paper becomes exactly white while ink keeps its anti-aliased edges.
 `--dpi` sets output resolution (default 300). A 10-page scan takes a few seconds.
 Output pages are re-rendered images; run `ocr` after if you want selectable text.
+On a Mac, `curl -fsSL https://pdfblah.com/clean-scan-mac.sh | sh` installs a Finder
+Quick Action: select PDFs, right-click, Quick Actions > Clean Scan.
 
 **Convert and OCR** (need system tools; run `pdfblah doctor` to check/install them)
 
