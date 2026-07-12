@@ -25,9 +25,9 @@ from .clean import clean as clean_scan
 from .compare import compare as compare_pdfs
 from .signatures import list_signatures, validate as validate_signatures
 from .convert import convert, pdf_to_word, office_to_pdf
-from .ocr import ocr
+from .ocr import ocr, get_language, languages as ocr_languages
 
-__version__ = "0.9.0"
+__version__ = "0.11.0"
 __all__ = [
     "process", "redact", "apply_rules", "parse_rules", "parse_rules_file",
     "parse_flags", "font_safe", "detect_alignment", "scrub", "anonymize", "merge",
@@ -44,5 +44,5 @@ __all__ = [
     "clean_scan",
     "form_list", "form_fill", "compare_pdfs", "list_signatures", "validate_signatures",
     # convert / ocr
-    "convert", "pdf_to_word", "office_to_pdf", "ocr",
+    "convert", "pdf_to_word", "office_to_pdf", "ocr", "get_language", "ocr_languages",
 ]

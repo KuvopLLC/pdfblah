@@ -223,6 +223,12 @@ pdfblah convert in.docx -o out.pdf           # office (DOCX/ODT/PPTX/XLSX) to PD
 
 pip install "pdfblah[ocr]"                   # searchable scans (needs Tesseract + Ghostscript)
 pdfblah ocr scan.pdf -o searchable.pdf --lang eng      # add a real text layer to a scan
+pdfblah ocr --langs                          # OCR languages available on this machine
+pdfblah ocr --get-lang deu,fra               # languages are modular: grab any of them as
+                                             # one file each (~/.pdfblah/tessdata), no
+                                             # package manager needed; --best for the
+                                             # larger high-accuracy models
+pdfblah ocr scan.pdf -o out.pdf --lang eng+deu         # then mix them freely
 
 pdfblah doctor                               # check the system tools; --install to fetch them
 ```

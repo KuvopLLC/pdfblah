@@ -11,6 +11,7 @@ from . import (
     number, bates, form_list, form_fill, compare_pdfs, list_signatures,
     validate_signatures, convert, ocr, deps,
 )
+from .ocr import get_language, languages as ocr_languages
 
 
 def _color(s):
@@ -406,16 +407,44 @@ def _convert_main(argv):
 
 
 def _ocr_main(argv):
-    ap = _ap("ocr", "Add a searchable text layer to a scanned (image-only) PDF.")
-    ap.add_argument("input")
-    ap.add_argument("-o", "--output", required=True)
+    ap = _ap("ocr", "Add a searchable text layer to a scanned (image-only) PDF. "
+                    "Languages are modular: --langs lists what you have, --get-lang "
+                    "downloads any other language as one file.")
+    ap.add_argument("input", nargs="?")
+    ap.add_argument("-o", "--output")
     ap.add_argument("--lang", default="eng", help="Tesseract language(s), e.g. eng or eng+deu")
     ap.add_argument("--force", action="store_true", help="re-OCR pages that already have text")
     ap.add_argument("--deskew", action="store_true", help="straighten crooked scans")
     ap.add_argument("--rotate", action="store_true", help="auto-rotate pages to detected orientation")
     ap.add_argument("--sidecar", help="also write the recognized text to this file")
+    ap.add_argument("--langs", action="store_true",
+                    help="list the OCR languages available on this machine")
+    ap.add_argument("--get-lang", metavar="CODE",
+                    help="download language file(s) into ~/.pdfblah/tessdata, e.g. deu or deu,fra")
+    ap.add_argument("--best", action="store_true",
+                    help="with --get-lang: the larger, higher-accuracy model")
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args(argv)
+    if a.langs:
+        langs = ocr_languages()
+        if a.json:
+            print(json.dumps({"ok": bool(langs), "languages": langs}, indent=2))
+        elif langs:
+            print("\n".join(langs))
+        else:
+            print("no OCR languages found (is Tesseract installed? run `pdfblah doctor`)",
+                  file=sys.stderr)
+        return 0 if langs else 1
+    if a.get_lang:
+        rc = 0
+        for code in [c.strip() for c in a.get_lang.split(",") if c.strip()]:
+            r = get_language(code, best=a.best)
+            rc |= _emit(r, lambda r=r: f"got {r['language']} ({r['quality']}, "
+                                       f"{r['bytes'] // 1024} KB): {r['path']}", a.json)
+        return rc
+    if not a.input or not a.output:
+        ap.error("input and -o/--output are required to OCR a PDF "
+                 "(or use --langs / --get-lang for language files)")
     r = ocr(a.input, a.output, lang=a.lang, force=a.force, deskew=a.deskew,
             rotate_pages=a.rotate, sidecar=a.sidecar)
     return _emit(r, lambda: f"OCR done: {r['output']} ({r.get('chars', 0)} chars recognized)", a.json)

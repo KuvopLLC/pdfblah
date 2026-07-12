@@ -113,3 +113,120 @@ def test_ocr_missing_lib_message(monkeypatch, tmp_path):
         pytest.skip("ocrmypdf is installed here")
     r = pb.ocr(str(tmp_path / "x.pdf"), str(tmp_path / "y.pdf"))
     assert not r["ok"] and "ocr" in r["error"].lower()
+
+
+# ---------- modular languages (always runnable: network and Tesseract are faked) ----------
+@pytest.fixture
+def tessdata_home(tmp_path, monkeypatch):
+    ocr_mod = importlib.import_module("pdfblah.ocr")
+    home = tmp_path / "tessdata"
+    monkeypatch.setattr(ocr_mod, "TESSDATA_HOME", str(home))
+    return home
+
+
+def _fake_download(monkeypatch, payload=b"x" * 64, status=None):
+    import io
+    import urllib.error
+    import urllib.request
+
+    def fake_urlopen(url, timeout=0):
+        if status:
+            raise urllib.error.HTTPError(url, status, "nope", None, io.BytesIO())
+        return io.BytesIO(payload)
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+
+
+def test_get_language_downloads_one_file(tessdata_home, monkeypatch):
+    _fake_download(monkeypatch)
+    r = pb.get_language("deu")
+    assert r["ok"] and r["quality"] == "fast", r
+    assert (tessdata_home / "deu.traineddata").read_bytes() == b"x" * 64
+    ocr_mod = importlib.import_module("pdfblah.ocr")
+    assert ocr_mod._home_languages() == ["deu"]
+
+
+def test_get_language_best_flag(tessdata_home, monkeypatch):
+    import urllib.request
+    seen = {}
+
+    def spy(url, timeout=0):
+        seen["url"] = url
+        raise OSError("stop here")
+
+    monkeypatch.setattr(urllib.request, "urlopen", spy)
+    r = pb.get_language("fra", best=True)
+    assert not r["ok"] and "tessdata_best" in seen["url"] and "fra.traineddata" in seen["url"]
+
+
+def test_get_language_rejects_junk_codes(tessdata_home):
+    for bad in ("", "de u", "../../etc/passwd", "a" * 40, "deu;rm"):
+        r = pb.get_language(bad)
+        assert not r["ok"] and r["code"] == "bad_lang", bad
+
+
+def test_get_language_unknown_code_is_friendly(tessdata_home, monkeypatch):
+    _fake_download(monkeypatch, status=404)
+    r = pb.get_language("zzz")
+    assert not r["ok"] and r["code"] == "unknown_lang"
+    assert "tessdata_fast" in r["error"] and not (tessdata_home / "zzz.traineddata").exists()
+
+
+def test_ensure_langs_prefers_system_packs(tessdata_home, monkeypatch):
+    ocr_mod = importlib.import_module("pdfblah.ocr")
+    monkeypatch.setattr(ocr_mod, "_system_tessdata", lambda: ("/sys/tessdata", ["eng", "deu"]))
+    env, missing = ocr_mod._ensure_langs(["eng", "deu"])
+    assert env == {} and missing == []
+
+
+def test_ensure_langs_uses_downloaded_files(tessdata_home, monkeypatch):
+    ocr_mod = importlib.import_module("pdfblah.ocr")
+    tessdata_home.mkdir(parents=True)
+    (tessdata_home / "deu.traineddata").write_bytes(b"d")
+    monkeypatch.setattr(ocr_mod, "_system_tessdata", lambda: (None, []))
+    env, missing = ocr_mod._ensure_langs(["deu"])
+    assert env == {"TESSDATA_PREFIX": str(tessdata_home)} and missing == []
+
+
+def test_ensure_langs_merges_system_into_home(tessdata_home, monkeypatch, tmp_path):
+    # eng lives in the system dir, deu was downloaded: both must be visible in one dir
+    ocr_mod = importlib.import_module("pdfblah.ocr")
+    sysdir = tmp_path / "sys"
+    sysdir.mkdir()
+    (sysdir / "eng.traineddata").write_bytes(b"e")
+    tessdata_home.mkdir(parents=True)
+    (tessdata_home / "deu.traineddata").write_bytes(b"d")
+    monkeypatch.setattr(ocr_mod, "_system_tessdata", lambda: (str(sysdir), ["eng"]))
+    env, missing = ocr_mod._ensure_langs(["eng", "deu"])
+    assert missing == [] and env == {"TESSDATA_PREFIX": str(tessdata_home)}
+    assert (tessdata_home / "eng.traineddata").exists()
+
+
+def test_ensure_langs_names_what_is_missing(tessdata_home, monkeypatch):
+    ocr_mod = importlib.import_module("pdfblah.ocr")
+    monkeypatch.setattr(ocr_mod, "_system_tessdata", lambda: (None, ["eng"]))
+    env, missing = ocr_mod._ensure_langs(["eng", "fra"])
+    assert env == {} and missing == ["fra"]
+
+
+@pytest.mark.skipif(not HAS_OCRMYPDF, reason="needs ocrmypdf importable")
+def test_ocr_missing_lang_says_get_lang(tessdata_home, monkeypatch, tmp_path):
+    ocr_mod = importlib.import_module("pdfblah.ocr")
+    monkeypatch.setattr("shutil.which", lambda n: "/usr/bin/tesseract")
+    monkeypatch.setattr(ocr_mod, "_system_tessdata", lambda: (None, ["eng"]))
+    r = pb.ocr(str(tmp_path / "x.pdf"), str(tmp_path / "y.pdf"), lang="eng+jpn")
+    assert not r["ok"] and r["code"] == "no_lang"
+    assert "--get-lang jpn" in r["error"]
+
+
+def test_cli_langs_and_get_lang(tessdata_home, monkeypatch, capsys):
+    from pdfblah import cli_tools
+    monkeypatch.setattr(cli_tools, "ocr_languages", lambda: ["deu", "eng"])
+    assert cli_tools.TOOL_HANDLERS["ocr"](["--langs"]) == 0
+    assert capsys.readouterr().out.splitlines() == ["deu", "eng"]
+    _fake_download(monkeypatch)
+    assert cli_tools.TOOL_HANDLERS["ocr"](["--get-lang", "deu,fra"]) == 0
+    out = capsys.readouterr().out
+    assert "got deu" in out and "got fra" in out
+    ocr_mod = importlib.import_module("pdfblah.ocr")
+    assert ocr_mod._home_languages() == ["deu", "fra"]
