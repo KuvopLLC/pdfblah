@@ -26,14 +26,15 @@ from .compare import compare as compare_pdfs
 from .signatures import list_signatures, validate as validate_signatures
 from .convert import convert, pdf_to_word, office_to_pdf
 from .ocr import ocr, get_language, languages as ocr_languages
+from .tidy import tidy
 
-__version__ = "0.11.0"
+__version__ = "0.12.0"
 __all__ = [
     "process", "redact", "apply_rules", "parse_rules", "parse_rules_file",
     "parse_flags", "font_safe", "detect_alignment", "scrub", "anonymize", "merge",
     "load_data", "read_metadata", "edit_metadata", "apply_to_file",
     # page ops
-    "combine", "split", "select_pages", "rotate", "crop", "parse_ranges",
+    "combine", "split", "select_pages", "rotate", "crop", "parse_ranges", "tidy",
     # render / extract
     "render_pages", "extract_text", "extract_images",
     # security

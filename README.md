@@ -214,6 +214,20 @@ Output pages are re-rendered images; run `ocr` after if you want selectable text
 On a Mac, `curl -fsSL https://pdfblah.com/clean-scan-mac.sh | sh` installs a Finder
 Quick Action: select PDFs, right-click, Quick Actions > Clean Scan.
 
+**Tidy bloated PDFs** (drop blank pages and exact repeats; needs the render extra:
+`pip install "pdfblah[app]"`)
+
+```sh
+pdfblah tidy in.pdf --dry-run                # preview: which pages would go, and why
+pdfblah tidy in.pdf -o out.pdf               # drop blanks + pixel-identical repeats
+pdfblah tidy in.pdf -o out.pdf --keep-blank  # only dedupe (or --keep-duplicates)
+```
+
+Deterministic by design: a page counts as blank only when it renders with almost no
+ink AND has no extractable text (a lone "Page 4" footer survives), and as a
+duplicate only when its rendered pixels exactly match an earlier page. The report
+names every dropped page and the reason. No AI, nothing uploaded.
+
 **Convert and OCR** (need system tools; run `pdfblah doctor` to check/install them)
 
 ```sh

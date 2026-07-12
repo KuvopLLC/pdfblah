@@ -160,6 +160,43 @@ def _clean_main(argv):
     return 1 if bad else 0
 
 
+def _tidy_main(argv):
+    ap = _ap("tidy", "Drop blank pages and exact duplicate pages from a PDF. "
+                     "Deterministic: a page with any real text is never treated as "
+                     "blank, and only pixel-identical repeats count as duplicates.")
+    ap.add_argument("input")
+    ap.add_argument("-o", "--output", help="output PDF (required unless --dry-run)")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="only report what would be dropped; write nothing")
+    ap.add_argument("--keep-blank", action="store_true", help="leave blank pages in")
+    ap.add_argument("--keep-duplicates", action="store_true", help="leave repeated pages in")
+    ap.add_argument("--blank-ink", type=float, default=0.003, metavar="FRACTION",
+                    help="inked-pixel fraction below which a textless page is blank "
+                         "(default 0.003)")
+    ap.add_argument("--json", action="store_true")
+    a = ap.parse_args(argv)
+    if not a.dry_run and not a.output:
+        ap.error("-o/--output is required (or use --dry-run to preview)")
+    from .tidy import tidy
+    r = tidy(a.input, a.output, drop_blank=not a.keep_blank,
+             drop_duplicates=not a.keep_duplicates, blank_threshold=a.blank_ink,
+             dry_run=a.dry_run)
+
+    def _msg():
+        lines = []
+        for d in r["dropped"]:
+            what = "blank" if d["reason"] == "blank" else f"duplicate of page {d['of']}"
+            lines.append(f"  page {d['page']}: {what}")
+        verb = "would drop" if a.dry_run else "dropped"
+        head = (f"tidy: kept {r['kept']} of {r['pages']} page(s), "
+                f"{verb} {len(r['dropped'])}")
+        if not a.dry_run:
+            head += f" -> {r['output']}"
+        return "\n".join([head] + lines)
+
+    return _emit(r, _msg, a.json)
+
+
 def _extract_main(argv):
     ap = _ap("extract", "Extract the text or the embedded images from a PDF.")
     ap.add_argument("input")
@@ -488,7 +525,7 @@ def _doctor_main(argv):
 TOOL_HANDLERS = {
     "combine": _combine_main, "split": _split_main, "pages": _pages_main,
     "rotate": _rotate_main, "crop": _crop_main, "render": _render_main, "clean": _clean_main,
-    "extract": _extract_main, "protect": _protect_main, "unlock": _unlock_main,
+    "tidy": _tidy_main, "extract": _extract_main, "protect": _protect_main, "unlock": _unlock_main,
     "attachments": _attachments_main, "optimize": _optimize_main,
     "watermark": _watermark_main, "stamp": _stamp_main, "number": _number_main,
     "bates": _bates_main, "form": _form_main, "compare": _compare_main,
