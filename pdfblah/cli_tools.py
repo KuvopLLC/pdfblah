@@ -194,6 +194,46 @@ def _clean_main(argv):
     return 1 if bad else 0
 
 
+def _sanitize_main(argv):
+    ap = _ap("sanitize", "Make a copy that is safe to send outside: strip metadata, "
+                         "comments, JavaScript, attached files, private app data, and "
+                         "earlier revisions, and report exactly what was found. Page "
+                         "content is untouched (words are redact's job).")
+    ap.add_argument("input")
+    ap.add_argument("-o", "--output", help="output PDF (required unless --dry-run)")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="just report what the file is carrying; write nothing")
+    ap.add_argument("--keep-annotations", action="store_true",
+                    help="leave comments and highlights in place")
+    ap.add_argument("--json", action="store_true")
+    a = ap.parse_args(argv)
+    if not a.dry_run and not a.output:
+        ap.error("-o/--output is required (or use --dry-run to inspect)")
+    from .sanitize import sanitize
+    r = sanitize(a.input, a.output, keep_annotations=a.keep_annotations,
+                 dry_run=a.dry_run)
+
+    def _msg():
+        f = r["found"]
+        lines = ["this file is carrying:" if a.dry_run else f"sanitized -> {a.output}"]
+        lines.append(f"  metadata fields: {len(f['metadata'])}"
+                     + (f" ({', '.join(f['metadata'][:6])})" if f["metadata"] else "")
+                     + (" + XMP" if f["xmp"] else ""))
+        ann = ", ".join(f"{k} x{v}" for k, v in sorted(f["annotations"].items()))
+        lines.append(f"  annotations: {sum(f['annotations'].values())}"
+                     + (f" ({ann})" if ann else ""))
+        lines.append(f"  javascript: {f['javascript']}  |  embedded files: "
+                     f"{len(f['embedded_files'])}  |  earlier revisions: {f['revisions']}"
+                     f"  |  layers: {f['layers']}  |  private app data: {f['private_data']}")
+        if not a.dry_run:
+            lines.append("removed: " + ("; ".join(r["removed"]) or "nothing (already clean)"))
+            if r["kept"]:
+                lines.append("kept: " + "; ".join(r["kept"]))
+        return "\n".join(lines)
+
+    return _emit(r, _msg, a.json)
+
+
 def _repair_main(argv):
     ap = _ap("repair", "Rebuild a PDF that won't open (truncated download, mangled "
                        "transfer, bad export). The result is re-opened to prove it "
@@ -699,7 +739,8 @@ TOOL_HANDLERS = {
     "combine": _combine_main, "split": _split_main, "pages": _pages_main,
     "rotate": _rotate_main, "crop": _crop_main, "render": _render_main, "clean": _clean_main,
     "tidy": _tidy_main, "compress": _compress_main, "find": _find_main,
-    "batch": _batch_main, "repair": _repair_main, "extract": _extract_main,
+    "batch": _batch_main, "repair": _repair_main, "sanitize": _sanitize_main,
+    "extract": _extract_main,
     "protect": _protect_main, "unlock": _unlock_main,
     "attachments": _attachments_main, "optimize": _optimize_main,
     "watermark": _watermark_main, "stamp": _stamp_main, "number": _number_main,

@@ -32,6 +32,7 @@ from .findtext import find
 from .batch import run_batch
 from .orient import auto_rotate
 from .repair import repair
+from .sanitize import sanitize
 
 __version__ = "0.13.0"
 __all__ = [
@@ -44,7 +45,7 @@ __all__ = [
     # render / extract / search
     "render_pages", "extract_text", "extract_images", "extract_tables", "find",
     # security / size
-    "protect", "unlock", "attachments", "optimize", "compress",
+    "protect", "unlock", "attachments", "optimize", "compress", "sanitize",
     # marks
     "watermark", "stamp", "number", "bates",
     # forms / compare / signatures
