@@ -34,6 +34,7 @@ from .batch import run_batch
 from .orient import auto_rotate
 from .repair import repair
 from .sanitize import sanitize
+from .recolor import recolor
 
 __version__ = "0.13.0"
 __all__ = [
@@ -50,7 +51,7 @@ __all__ = [
     # marks
     "watermark", "stamp", "number", "bates",
     # forms / compare / signatures
-    "clean_scan",
+    "clean_scan", "recolor",
     "form_list", "form_fill", "compare_pdfs", "list_signatures", "validate_signatures",
     # convert / ocr
     "convert", "pdf_to_word", "office_to_pdf", "ocr", "get_language", "ocr_languages",

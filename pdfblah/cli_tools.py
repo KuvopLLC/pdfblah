@@ -225,6 +225,24 @@ def _clean_main(argv):
     return 1 if bad else 0
 
 
+def _recolor_main(argv):
+    ap = _ap("recolor", "Re-ink a PDF: dark mode for night reading, sepia, or any "
+                        "ink color (made for printing sheet music in dark blue). "
+                        "Pages are re-rendered images, like clean.")
+    ap.add_argument("input")
+    ap.add_argument("-o", "--output", required=True)
+    ap.add_argument("--scheme", default="dark",
+                    help="dark (default), sepia, or ink=COLOR (navy, blue, red, "
+                         "green, brown, gray, or #rrggbb)")
+    ap.add_argument("--dpi", type=int, default=200)
+    ap.add_argument("--json", action="store_true")
+    a = ap.parse_args(argv)
+    from .recolor import recolor
+    r = recolor(a.input, a.output, scheme=a.scheme, dpi=a.dpi)
+    return _emit(r, lambda: f"re-inked {r['pages']} page(s) ({r['scheme']}, "
+                            f"{r['dpi']} dpi)  ->  {a.output}", a.json)
+
+
 def _sanitize_main(argv):
     ap = _ap("sanitize", "Make a copy that is safe to send outside: strip metadata, "
                          "comments, JavaScript, attached files, private app data, and "
@@ -771,7 +789,7 @@ TOOL_HANDLERS = {
     "rotate": _rotate_main, "crop": _crop_main, "render": _render_main, "clean": _clean_main,
     "tidy": _tidy_main, "compress": _compress_main, "find": _find_main,
     "batch": _batch_main, "repair": _repair_main, "sanitize": _sanitize_main,
-    "extract": _extract_main,
+    "recolor": _recolor_main, "extract": _extract_main,
     "protect": _protect_main, "unlock": _unlock_main,
     "attachments": _attachments_main, "optimize": _optimize_main,
     "watermark": _watermark_main, "stamp": _stamp_main, "number": _number_main,
