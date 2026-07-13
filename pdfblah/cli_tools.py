@@ -160,6 +160,38 @@ def _clean_main(argv):
     return 1 if bad else 0
 
 
+def _batch_main(argv):
+    ap = _ap("batch", "Run a recipe (a text file of pdfblah steps, one per line) "
+                      "over many PDFs. `--start auto` on a bates step numbers "
+                      "sequentially ACROSS files, in sorted name order.")
+    ap.add_argument("recipe", help="recipe file: lines like 'bates --prefix EXH- --start auto'")
+    ap.add_argument("inputs", nargs="+", help="PDF files and/or directories")
+    ap.add_argument("-o", "--out-dir", required=True, help="finished files land here, same names")
+    ap.add_argument("--dry-run", action="store_true", help="show the plan; write nothing")
+    ap.add_argument("--json", action="store_true")
+    a = ap.parse_args(argv)
+    from .batch import run_batch
+    r = run_batch(a.recipe, a.inputs, a.out_dir, dry_run=a.dry_run)
+    if not r.get("ok") and "files" not in r:
+        return _emit(r, lambda: "", a.json)
+    if a.json:
+        print(json.dumps(r, indent=2))
+        return 0 if r["ok"] else 1
+    for f in r["files"]:
+        mark = "plan" if a.dry_run else ("ok  " if f["ok"] else "ERR ")
+        tail = f" (bates from {f['counter']})" if "counter" in f else ""
+        note = f": {f['error']}" if not f.get("ok", True) else ""
+        print(f"{mark} {os.path.basename(f['input'])} -> {f['output']}{tail}{note}")
+    verb = "planned" if a.dry_run else "processed"
+    line = f"{verb} {len(r['files']) if a.dry_run else r['processed']} file(s)"
+    if not a.dry_run and r["failed"]:
+        line += f", {r['failed']} failed"
+    if "counter_end" in r:
+        line += f"; next bates number would be {r['counter_end']}"
+    print(line, file=sys.stderr)
+    return 0 if r["ok"] else 1
+
+
 def _find_main(argv):
     ap = _ap("find", "Search for text across many PDFs at once (files, folders, or "
                      "a whole tree with -r). Output is file, page, and a snippet.")
@@ -615,7 +647,7 @@ TOOL_HANDLERS = {
     "combine": _combine_main, "split": _split_main, "pages": _pages_main,
     "rotate": _rotate_main, "crop": _crop_main, "render": _render_main, "clean": _clean_main,
     "tidy": _tidy_main, "compress": _compress_main, "find": _find_main,
-    "extract": _extract_main,
+    "batch": _batch_main, "extract": _extract_main,
     "protect": _protect_main, "unlock": _unlock_main,
     "attachments": _attachments_main, "optimize": _optimize_main,
     "watermark": _watermark_main, "stamp": _stamp_main, "number": _number_main,

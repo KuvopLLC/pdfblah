@@ -29,6 +29,7 @@ from .ocr import ocr, get_language, languages as ocr_languages
 from .tidy import tidy
 from .compress import compress
 from .findtext import find
+from .batch import run_batch
 
 __version__ = "0.12.0"
 __all__ = [
@@ -48,4 +49,6 @@ __all__ = [
     "form_list", "form_fill", "compare_pdfs", "list_signatures", "validate_signatures",
     # convert / ocr
     "convert", "pdf_to_word", "office_to_pdf", "ocr", "get_language", "ocr_languages",
+    # automation
+    "run_batch",
 ]
