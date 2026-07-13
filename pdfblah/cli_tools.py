@@ -655,14 +655,36 @@ def _bates_main(argv):
 
 # ---------- forms / compare / signatures ----------
 def _form_main(argv):
-    ap = _ap("form", "List form fields, fill them from a JSON file, or flatten.")
+    ap = _ap("form", "List form fields, fill them (one file from JSON, or one "
+                     "PDF per row of a CSV/JSON array with --fill-from), or flatten.")
     ap.add_argument("input")
     ap.add_argument("output", nargs="?")
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--fill", metavar="DATA.json")
+    ap.add_argument("--fill-from", metavar="DATA.csv",
+                    help="CSV (headers = field names) or JSON array; one filled PDF per row")
+    ap.add_argument("-o", "--out-dir", help="with --fill-from: where the filled PDFs go")
+    ap.add_argument("--name", default="{row}.pdf",
+                    help='with --fill-from: filename template; {row} = row number, '
+                         '{Column} = that column\'s value, e.g. "{Employee}.pdf"')
     ap.add_argument("--flatten", action="store_true")
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args(argv)
+    if a.fill_from:
+        if not a.out_dir:
+            raise SystemExit("give -o/--out-dir for --fill-from")
+        from .forms import fill_from
+        r = fill_from(a.input, a.fill_from, a.out_dir, name=a.name, flatten=a.flatten)
+
+        def _msg():
+            lines = [f"filled {r['rows']} cop(ies) into {a.out_dir} "
+                     f"(fields: {', '.join(r['fields'])})"]
+            if r["unmatched_columns"]:
+                lines.append("note: these data columns match no form field: "
+                             + ", ".join(r["unmatched_columns"]))
+            return "\n".join(lines)
+
+        return _emit(r, _msg, a.json)
     if a.fill or a.flatten:
         if not a.output:
             raise SystemExit("give an output file for --fill/--flatten")

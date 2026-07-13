@@ -56,3 +56,72 @@ def fill(input_path, output_path, data, flatten=False):
         pdf.save(output_path)
     return {"ok": True, "filled": filled, "count": len(filled),
             "flattened": bool(flatten), "output": output_path}
+
+
+def fill_from(input_path, data_path, out_dir, name="{row}.pdf", flatten=False):
+    """Fill the same form once per data row: mail-merge for AcroForms.
+
+    The weekly grind this replaces: the same fields hand-written (or hand-typed)
+    onto dozens of copies of the same form. Point it at a CSV (headers = field
+    names) or a JSON array of objects, and every row becomes one filled PDF.
+
+    name   Filename template: {row} is the row number, {Column} is any column's
+           value, so name="{Employee}.pdf" files everything by person.
+
+    Columns that match no form field are reported once (not silently dropped),
+    and the report says which fields each row actually filled.
+    Returns {ok, rows, outputs, unmatched_columns, fields}.
+    """
+    import csv
+    import json
+    import os
+
+    from .organize import _safe_filename
+
+    try:
+        if data_path.lower().endswith(".json"):
+            with open(data_path, encoding="utf-8") as f:
+                rows = json.load(f)
+            if not isinstance(rows, list):
+                return {"ok": False, "error": "the JSON must be an array of objects"}
+            rows = [{str(k): v for k, v in r.items()} for r in rows]
+        else:
+            with open(data_path, encoding="utf-8", newline="") as f:
+                rows = list(csv.DictReader(f))
+    except OSError as e:
+        return {"ok": False, "error": f"can't read the data: {e}"}
+    except Exception as e:
+        return {"ok": False, "error": f"can't parse the data: {e}"}
+    if not rows:
+        return {"ok": False, "error": "the data has no rows"}
+
+    field_names = {f["name"] for f in list_fields(input_path)["fields"]}
+    if not field_names:
+        return {"ok": False, "code": "no_fields",
+                "error": "this PDF has no form fields to fill "
+                         "(`pdfblah form in.pdf --list` shows what a form carries)"}
+    unmatched = sorted({k for r in rows for k in r.keys()} - field_names)
+
+    os.makedirs(out_dir, exist_ok=True)
+    outputs, seen = [], {}
+    for i, row in enumerate(rows, 1):
+        fname = name.replace("{row}", str(i))
+        for k, v in row.items():
+            fname = fname.replace("{%s}" % k, str(v))
+        if not fname.lower().endswith(".pdf"):
+            fname += ".pdf"
+        fname = _safe_filename(fname)
+        count = seen.get(fname, 0) + 1
+        seen[fname] = count
+        if count > 1:
+            stem, ext = os.path.splitext(fname)
+            fname = f"{stem}-{count}{ext}"
+        out = os.path.join(out_dir, fname)
+        r = fill(input_path, out, {k: v for k, v in row.items() if k in field_names},
+                 flatten=flatten)
+        if not r.get("ok"):
+            return {"ok": False, "error": f"row {i}: {r.get('error')}",
+                    "outputs": outputs}
+        outputs.append(out)
+    return {"ok": True, "rows": len(rows), "outputs": outputs,
+            "unmatched_columns": unmatched, "fields": sorted(field_names)}

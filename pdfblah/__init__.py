@@ -21,7 +21,7 @@ from .organize import (combine, split, select_pages, rotate, crop, parse_ranges,
 from .extract import render as render_pages, extract_text, extract_images, extract_tables
 from .security import protect, unlock, attachments, optimize
 from .stamp import watermark, stamp, number, bates
-from .forms import list_fields as form_list, fill as form_fill
+from .forms import list_fields as form_list, fill as form_fill, fill_from as form_fill_from
 from .clean import clean as clean_scan
 from .compare import compare as compare_pdfs
 from .signatures import list_signatures, validate as validate_signatures
@@ -53,7 +53,8 @@ __all__ = [
     "watermark", "stamp", "number", "bates",
     # forms / compare / signatures
     "clean_scan", "recolor",
-    "form_list", "form_fill", "compare_pdfs", "list_signatures", "validate_signatures",
+    "form_list", "form_fill", "form_fill_from", "compare_pdfs", "list_signatures",
+    "validate_signatures",
     # convert / ocr
     "convert", "pdf_to_word", "office_to_pdf", "ocr", "get_language", "ocr_languages",
     # automation / checking
