@@ -116,8 +116,18 @@ def _named_destinations(pdf):
     return out
 
 
+def _safe_get(obj, key, default=None):
+    """dict-style get that tolerates arrays and scalars (old pikepdf raises
+    ValueError instead of lacking .get on non-dictionaries)."""
+    try:
+        v = obj.get(key)
+    except (AttributeError, TypeError, ValueError):
+        return default
+    return default if v is None else v
+
+
 def _dest_array(obj):
-    d = obj.get("/D") if hasattr(obj, "get") else None
+    d = _safe_get(obj, "/D")
     return d if d is not None else obj
 
 

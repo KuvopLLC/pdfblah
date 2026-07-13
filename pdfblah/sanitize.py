@@ -21,6 +21,15 @@ import os
 _WIDGET = "/Widget"
 
 
+def _is_js_action(obj):
+    """/OpenAction may be an action dict or a plain destination array; only the
+    dict form can carry JavaScript (old pikepdf raises on .get for arrays)."""
+    try:
+        return str(obj.get("/S", "")) == "/JavaScript"
+    except (AttributeError, TypeError, ValueError):
+        return False
+
+
 def sanitize(input_path, output_path=None, keep_annotations=False, dry_run=False):
     """Strip hidden data from a PDF and say what was there.
 
@@ -120,7 +129,7 @@ def _count_js(root):
         kids = js.get("/Names")
         n += len(kids) // 2 if kids is not None else 1
     oa = root.get("/OpenAction")
-    if oa is not None and hasattr(oa, "get") and str(oa.get("/S", "")) == "/JavaScript":
+    if oa is not None and _is_js_action(oa):
         n += 1
     if root.get("/AA") is not None:
         n += 1
@@ -132,7 +141,7 @@ def _strip_js(root, pdf):
     if names is not None and "/JavaScript" in names:
         del names["/JavaScript"]
     oa = root.get("/OpenAction")
-    if oa is not None and hasattr(oa, "get") and str(oa.get("/S", "")) == "/JavaScript":
+    if oa is not None and _is_js_action(oa):
         del root["/OpenAction"]
     if "/AA" in root:
         del root["/AA"]
