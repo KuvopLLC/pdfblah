@@ -214,6 +214,21 @@ Output pages are re-rendered images; run `ocr` after if you want selectable text
 On a Mac, `curl -fsSL https://pdfblah.com/clean-scan-mac.sh | sh` installs a Finder
 Quick Action: select PDFs, right-click, Quick Actions > Clean Scan.
 
+**Fit under a size cap, search everything, batch it all**
+
+```sh
+pdfblah compress in.pdf -o out.pdf --target 200kb   # hard cap: quality ladder until it fits,
+                                                    # text stays selectable; honest report on a miss
+pdfblah find "invoice 4471" ~/docs -r               # grep for PDFs: file, page, snippet
+pdfblah extract in.pdf --tables -o out.csv          # the tables, out as CSV
+pdfblah repair broken.pdf -o fixed.pdf              # rebuild a file that won't open
+pdfblah rotate in.pdf out.pdf --auto                # fix upside-down/sideways pages (lossless)
+pdfblah pages in.pdf out.pdf --insert notes.pdf --every 2   # a notes page after every 2 pages
+
+pdfblah batch discovery.recipe evidence/ -o stamped/   # one recipe over a folder; in the recipe,
+                                                       # 'bates --start auto' numbers ACROSS files
+```
+
 **Tidy bloated PDFs** (drop blank pages and exact repeats; needs the render extra:
 `pip install "pdfblah[app]"`)
 

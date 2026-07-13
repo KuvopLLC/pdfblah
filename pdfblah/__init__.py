@@ -33,7 +33,7 @@ from .batch import run_batch
 from .orient import auto_rotate
 from .repair import repair
 
-__version__ = "0.12.0"
+__version__ = "0.13.0"
 __all__ = [
     "process", "redact", "apply_rules", "parse_rules", "parse_rules_file",
     "parse_flags", "font_safe", "detect_alignment", "scrub", "anonymize", "merge",
