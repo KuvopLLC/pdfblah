@@ -329,9 +329,9 @@ def main(argv=None):
     if argv and argv[0] in HANDLERS:
         return HANDLERS[argv[0]](argv[1:])
     if argv and argv[0] in ("combine", "split", "pages", "rotate", "crop", "render", "clean",
-                            "tidy", "extract", "protect", "unlock", "attachments", "optimize",
-                            "watermark", "stamp", "number", "bates", "form", "compare",
-                            "signatures", "convert", "ocr", "doctor"):
+                            "tidy", "compress", "extract", "protect", "unlock", "attachments",
+                            "optimize", "watermark", "stamp", "number", "bates", "form",
+                            "compare", "signatures", "convert", "ocr", "doctor"):
         from .cli_tools import TOOL_HANDLERS
         return TOOL_HANDLERS[argv[0]](argv[1:])
     return _replace_main(argv)

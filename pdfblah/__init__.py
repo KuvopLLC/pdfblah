@@ -27,6 +27,7 @@ from .signatures import list_signatures, validate as validate_signatures
 from .convert import convert, pdf_to_word, office_to_pdf
 from .ocr import ocr, get_language, languages as ocr_languages
 from .tidy import tidy
+from .compress import compress
 
 __version__ = "0.12.0"
 __all__ = [
@@ -37,8 +38,8 @@ __all__ = [
     "combine", "split", "select_pages", "rotate", "crop", "parse_ranges", "tidy",
     # render / extract
     "render_pages", "extract_text", "extract_images",
-    # security
-    "protect", "unlock", "attachments", "optimize",
+    # security / size
+    "protect", "unlock", "attachments", "optimize", "compress",
     # marks
     "watermark", "stamp", "number", "bates",
     # forms / compare / signatures

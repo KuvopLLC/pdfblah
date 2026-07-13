@@ -160,6 +160,46 @@ def _clean_main(argv):
     return 1 if bad else 0
 
 
+def _parse_bytes(s):
+    """'200kb' -> 204800, '1.5mb' -> 1572864, '300000' -> 300000."""
+    t = s.strip().lower().replace(" ", "")
+    mult = 1
+    for suffix, m in (("kb", 1024), ("k", 1024), ("mb", 1024 * 1024), ("m", 1024 * 1024)):
+        if t.endswith(suffix):
+            t, mult = t[:-len(suffix)], m
+            break
+    try:
+        return int(float(t) * mult)
+    except ValueError:
+        raise SystemExit(f"can't read '{s}' as a size (try 200kb, 1.5mb, or bytes)")
+
+
+def _compress_main(argv):
+    ap = _ap("compress", "Shrink a PDF by recompressing its images in place; text and "
+                         "vectors stay untouched. With --target it walks a quality "
+                         "ladder until the file fits under a hard cap.")
+    ap.add_argument("input")
+    ap.add_argument("-o", "--output", required=True)
+    ap.add_argument("--target", metavar="SIZE",
+                    help="hard size cap, e.g. 200kb or 1.5mb; on a miss the best "
+                         "effort is still written and the smallest achievable size reported")
+    ap.add_argument("--dpi", type=int, help="image resolution cap (default 150)")
+    ap.add_argument("--quality", type=int, help="JPEG quality 1-95 (default 75)")
+    ap.add_argument("--grayscale", action="store_true", help="also convert images to grayscale")
+    ap.add_argument("--json", action="store_true")
+    a = ap.parse_args(argv)
+    from .compress import compress
+    r = compress(a.input, a.output, target_bytes=_parse_bytes(a.target) if a.target else None,
+                 dpi=a.dpi, quality=a.quality, grayscale=a.grayscale)
+
+    def _msg():
+        return (f"compressed: {r['bytes_before'] // 1024} KB -> {r['bytes_after'] // 1024} KB "
+                f"({r['saved_pct']}% smaller, images at {r['dpi']} dpi / q{r['quality']}, "
+                f"{r['images_recompressed']} recompressed, {r['images_kept']} kept) -> {a.output}")
+
+    return _emit(r, _msg, a.json)
+
+
 def _tidy_main(argv):
     ap = _ap("tidy", "Drop blank pages and exact duplicate pages from a PDF. "
                      "Deterministic: a page with any real text is never treated as "
@@ -525,7 +565,8 @@ def _doctor_main(argv):
 TOOL_HANDLERS = {
     "combine": _combine_main, "split": _split_main, "pages": _pages_main,
     "rotate": _rotate_main, "crop": _crop_main, "render": _render_main, "clean": _clean_main,
-    "tidy": _tidy_main, "extract": _extract_main, "protect": _protect_main, "unlock": _unlock_main,
+    "tidy": _tidy_main, "compress": _compress_main, "extract": _extract_main,
+    "protect": _protect_main, "unlock": _unlock_main,
     "attachments": _attachments_main, "optimize": _optimize_main,
     "watermark": _watermark_main, "stamp": _stamp_main, "number": _number_main,
     "bates": _bates_main, "form": _form_main, "compare": _compare_main,
