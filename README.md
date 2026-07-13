@@ -256,6 +256,13 @@ ink AND has no extractable text (a lone "Page 4" footer survives), and as a
 duplicate only when its rendered pixels exactly match an earlier page. The report
 names every dropped page and the reason. No AI, nothing uploaded.
 
+**Archive it** (PDF/A; needs Ghostscript, `pdfblah doctor` checks)
+
+```sh
+pdfblah pdfa in.pdf -o archive.pdf            # PDF/A-2b: fonts embedded, sRGB output
+                                              # intent, XMP id; --level 1|2|3
+```
+
 **Convert and OCR** (need system tools; run `pdfblah doctor` to check/install them)
 
 ```sh

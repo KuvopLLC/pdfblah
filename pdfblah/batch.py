@@ -28,7 +28,7 @@ from contextlib import redirect_stderr, redirect_stdout
 _POSITIONAL = {"redact", "scrub", "anonymize", "meta", "pages", "rotate", "crop",
                "protect", "unlock", "watermark", "stamp", "number", "bates",
                "optimize", "clean"}
-_FLAGGED = {"tidy", "compress", "ocr", "sanitize", "recolor"}
+_FLAGGED = {"tidy", "compress", "ocr", "sanitize", "recolor", "pdfa"}
 ALLOWED = sorted(_POSITIONAL | _FLAGGED | {"replace"})
 
 

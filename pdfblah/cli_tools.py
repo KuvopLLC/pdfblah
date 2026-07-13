@@ -225,6 +225,27 @@ def _clean_main(argv):
     return 1 if bad else 0
 
 
+def _pdfa_main(argv):
+    ap = _ap("pdfa", "Convert to PDF/A, the archival format (fonts embedded, sRGB "
+                     "output intent, XMP identification). Needs Ghostscript.")
+    ap.add_argument("input")
+    ap.add_argument("-o", "--output", required=True)
+    ap.add_argument("--level", type=int, default=2, choices=[1, 2, 3],
+                    help="PDF/A part: 1, 2 (default), or 3")
+    ap.add_argument("--json", action="store_true")
+    a = ap.parse_args(argv)
+    from .pdfa import to_pdfa
+    r = to_pdfa(a.input, a.output, level=a.level)
+
+    def _msg():
+        return (f"converted to PDF/A-{r['level']}b  ->  {a.output}\n"
+                f"  output intent: {'yes' if r['markers']['output_intent'] else 'NO'}"
+                f"  |  XMP PDF/A id: {'yes' if r['markers']['xmp_pdfaid'] else 'NO'}\n"
+                f"  {r['note']}")
+
+    return _emit(r, _msg, a.json)
+
+
 def _links_main(argv):
     ap = _ap("links", "Check every link and bookmark in a PDF: internal jumps are "
                       "resolved against the pages that exist, external URLs are "
@@ -847,7 +868,8 @@ TOOL_HANDLERS = {
     "rotate": _rotate_main, "crop": _crop_main, "render": _render_main, "clean": _clean_main,
     "tidy": _tidy_main, "compress": _compress_main, "find": _find_main,
     "batch": _batch_main, "repair": _repair_main, "sanitize": _sanitize_main,
-    "recolor": _recolor_main, "links": _links_main, "extract": _extract_main,
+    "recolor": _recolor_main, "links": _links_main, "pdfa": _pdfa_main,
+    "extract": _extract_main,
     "protect": _protect_main, "unlock": _unlock_main,
     "attachments": _attachments_main, "optimize": _optimize_main,
     "watermark": _watermark_main, "stamp": _stamp_main, "number": _number_main,
