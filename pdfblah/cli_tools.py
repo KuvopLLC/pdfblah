@@ -160,6 +160,40 @@ def _clean_main(argv):
     return 1 if bad else 0
 
 
+def _find_main(argv):
+    ap = _ap("find", "Search for text across many PDFs at once (files, folders, or "
+                     "a whole tree with -r). Output is file, page, and a snippet.")
+    ap.add_argument("pattern")
+    ap.add_argument("paths", nargs="+", help="PDF files and/or directories")
+    ap.add_argument("-r", "--recursive", action="store_true", help="descend into subdirectories")
+    ap.add_argument("--ci", action="store_true", help="ignore case")
+    ap.add_argument("--word", action="store_true", help="whole words only")
+    ap.add_argument("--regex", action="store_true", help="treat the pattern as a regular expression")
+    ap.add_argument("--max", type=int, default=500, help="stop after this many matches (default 500)")
+    ap.add_argument("--json", action="store_true")
+    a = ap.parse_args(argv)
+    from .findtext import find
+    r = find(a.pattern, a.paths, recursive=a.recursive, regex=a.regex, ci=a.ci,
+             word=a.word, max_matches=a.max)
+    if not r.get("ok"):
+        return _emit(r, lambda: "", a.json)
+    if a.json:
+        print(json.dumps(r, indent=2))
+    else:
+        for m in r["matches"]:
+            print(f"{m['file']} p.{m['page']}: {m['snippet']}")
+        tail = f"{len(r['matches'])} match(es) in {r['files_searched']} file(s)"
+        if r["truncated"]:
+            tail += f" (stopped at --max {a.max})"
+        print(tail, file=sys.stderr)
+        for f in r["no_text"]:
+            print(f"note: {f} has no text layer (a scan?); run `pdfblah ocr` on it first",
+                  file=sys.stderr)
+        for e in r["errors"]:
+            print(f"skipped {e['file']}: {e['error']}", file=sys.stderr)
+    return 0 if r["matches"] else 1
+
+
 def _parse_bytes(s):
     """'200kb' -> 204800, '1.5mb' -> 1572864, '300000' -> 300000."""
     t = s.strip().lower().replace(" ", "")
@@ -565,7 +599,8 @@ def _doctor_main(argv):
 TOOL_HANDLERS = {
     "combine": _combine_main, "split": _split_main, "pages": _pages_main,
     "rotate": _rotate_main, "crop": _crop_main, "render": _render_main, "clean": _clean_main,
-    "tidy": _tidy_main, "compress": _compress_main, "extract": _extract_main,
+    "tidy": _tidy_main, "compress": _compress_main, "find": _find_main,
+    "extract": _extract_main,
     "protect": _protect_main, "unlock": _unlock_main,
     "attachments": _attachments_main, "optimize": _optimize_main,
     "watermark": _watermark_main, "stamp": _stamp_main, "number": _number_main,

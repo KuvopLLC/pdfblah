@@ -28,6 +28,7 @@ from .convert import convert, pdf_to_word, office_to_pdf
 from .ocr import ocr, get_language, languages as ocr_languages
 from .tidy import tidy
 from .compress import compress
+from .findtext import find
 
 __version__ = "0.12.0"
 __all__ = [
@@ -36,8 +37,8 @@ __all__ = [
     "load_data", "read_metadata", "edit_metadata", "apply_to_file",
     # page ops
     "combine", "split", "select_pages", "rotate", "crop", "parse_ranges", "tidy",
-    # render / extract
-    "render_pages", "extract_text", "extract_images",
+    # render / extract / search
+    "render_pages", "extract_text", "extract_images", "find",
     # security / size
     "protect", "unlock", "attachments", "optimize", "compress",
     # marks
