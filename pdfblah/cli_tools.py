@@ -246,6 +246,37 @@ def _pdfa_main(argv):
     return _emit(r, _msg, a.json)
 
 
+def _access_main(argv):
+    ap = _ap("access", "Check a PDF's accessibility basics: tags, language, title, "
+                       "alt text, text layer, bookmarks. Failing means not "
+                       "accessible; passing does not certify (that's veraPDF/PAC).")
+    ap.add_argument("input")
+    ap.add_argument("--json", action="store_true")
+    a = ap.parse_args(argv)
+    from .access import check_access
+    r = check_access(a.input)
+    if a.json:
+        print(json.dumps(r, indent=2))
+    else:
+        c = r["checks"]
+        yn = lambda v: "yes" if v else "NO"
+        print(f"tagged: {yn(c['tagged'])}  |  language: {c['language'] or 'NO'}  |  "
+              f"title: {'yes' if c['title'] else 'NO'}"
+              f"{' (displayed)' if c['display_title'] else ''}  |  "
+              f"text layer: {yn(c['text_layer'])}  |  bookmarks: {yn(c['bookmarks'])}")
+        if "figures" in c:
+            f = c["figures"]
+            print(f"tagged figures: {f['with_alt']} of {f['total']} have alt text")
+        if r["pdfua_claimed"]:
+            print("claims PDF/UA in its metadata")
+        for p in r["problems"]:
+            print(f"  problem: {p}")
+        for adv in r["advisories"]:
+            print(f"  consider: {adv}")
+        print(r["note"])
+    return 1 if r["problems"] else 0
+
+
 def _links_main(argv):
     ap = _ap("links", "Check every link and bookmark in a PDF: internal jumps are "
                       "resolved against the pages that exist, external URLs are "
@@ -869,7 +900,7 @@ TOOL_HANDLERS = {
     "tidy": _tidy_main, "compress": _compress_main, "find": _find_main,
     "batch": _batch_main, "repair": _repair_main, "sanitize": _sanitize_main,
     "recolor": _recolor_main, "links": _links_main, "pdfa": _pdfa_main,
-    "extract": _extract_main,
+    "access": _access_main, "extract": _extract_main,
     "protect": _protect_main, "unlock": _unlock_main,
     "attachments": _attachments_main, "optimize": _optimize_main,
     "watermark": _watermark_main, "stamp": _stamp_main, "number": _number_main,

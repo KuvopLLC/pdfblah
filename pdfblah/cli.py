@@ -330,7 +330,7 @@ def main(argv=None):
         return HANDLERS[argv[0]](argv[1:])
     if argv and argv[0] in ("combine", "split", "pages", "rotate", "crop", "render", "clean",
                             "tidy", "compress", "find", "batch", "repair", "sanitize",
-                            "recolor", "links", "pdfa", "extract", "protect", "unlock", "attachments",
+                            "recolor", "links", "pdfa", "access", "extract", "protect", "unlock", "attachments",
                             "optimize", "watermark", "stamp", "number", "bates", "form",
                             "compare", "signatures", "convert", "ocr", "doctor"):
         from .cli_tools import TOOL_HANDLERS

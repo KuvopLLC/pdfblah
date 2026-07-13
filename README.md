@@ -270,6 +270,13 @@ ink AND has no extractable text (a lone "Page 4" footer survives), and as a
 duplicate only when its rendered pixels exactly match an earlier page. The report
 names every dropped page and the reason. No AI, nothing uploaded.
 
+**Check accessibility basics** (the honest 60 seconds)
+
+```sh
+pdfblah access report.pdf     # tagged? language? alt text? title? text layer?
+                              # failing = not accessible; passing != certified (veraPDF's job)
+```
+
 **Archive it** (PDF/A; needs Ghostscript, `pdfblah doctor` checks)
 
 ```sh

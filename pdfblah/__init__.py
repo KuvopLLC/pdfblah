@@ -37,8 +37,9 @@ from .sanitize import sanitize
 from .recolor import recolor
 from .links import check_links
 from .pdfa import to_pdfa
+from .access import check_access
 
-__version__ = "0.16.0"
+__version__ = "0.17.0"
 __all__ = [
     "process", "redact", "apply_rules", "parse_rules", "parse_rules_file",
     "parse_flags", "font_safe", "detect_alignment", "scrub", "anonymize", "merge",
@@ -59,5 +60,5 @@ __all__ = [
     # convert / ocr
     "convert", "pdf_to_word", "office_to_pdf", "ocr", "get_language", "ocr_languages",
     # automation / checking / archival
-    "run_batch", "check_links", "to_pdfa",
+    "run_batch", "check_links", "to_pdfa", "check_access",
 ]
