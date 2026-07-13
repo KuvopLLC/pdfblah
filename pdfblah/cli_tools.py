@@ -225,6 +225,42 @@ def _clean_main(argv):
     return 1 if bad else 0
 
 
+def _links_main(argv):
+    ap = _ap("links", "Check every link and bookmark in a PDF: internal jumps are "
+                      "resolved against the pages that exist, external URLs are "
+                      "contacted (unless --offline).")
+    ap.add_argument("input")
+    ap.add_argument("--offline", action="store_true",
+                    help="structural check only; don't contact external URLs")
+    ap.add_argument("--timeout", type=int, default=10, help="seconds per URL (default 10)")
+    ap.add_argument("--json", action="store_true")
+    a = ap.parse_args(argv)
+    from .links import check_links
+    r = check_links(a.input, external=not a.offline, timeout=a.timeout)
+    if a.json:
+        print(json.dumps(r, indent=2))
+    else:
+        i, b, e = r["internal"], r["bookmarks"], r["external_urls"]
+        print(f"internal links: {i['ok']} ok, {len(i['broken'])} broken")
+        for x in i["broken"]:
+            print(f"  page {x['page']}: {x['problem']}")
+        print(f"bookmarks: {b['ok']} ok, {len(b['broken'])} broken")
+        for x in b["broken"]:
+            print(f"  '{x['bookmark']}': {x['problem']}")
+        if a.offline:
+            print(f"external URLs: {r['unchecked_urls']} found, not contacted (--offline)")
+        else:
+            print(f"external URLs: {e['ok']} ok, {len(e['broken'])} broken, "
+                  f"{len(e['unreachable'])} unreachable")
+            for x in e["broken"]:
+                print(f"  {x['url']} (page {', '.join(map(str, x['pages']))}): {x['detail']}")
+            for x in e["unreachable"]:
+                print(f"  {x['url']}: {x['detail']}")
+    bad = len(r["internal"]["broken"]) + len(r["bookmarks"]["broken"]) \
+        + len(r["external_urls"]["broken"])
+    return 1 if bad else 0
+
+
 def _recolor_main(argv):
     ap = _ap("recolor", "Re-ink a PDF: dark mode for night reading, sepia, or any "
                         "ink color (made for printing sheet music in dark blue). "
@@ -789,7 +825,7 @@ TOOL_HANDLERS = {
     "rotate": _rotate_main, "crop": _crop_main, "render": _render_main, "clean": _clean_main,
     "tidy": _tidy_main, "compress": _compress_main, "find": _find_main,
     "batch": _batch_main, "repair": _repair_main, "sanitize": _sanitize_main,
-    "recolor": _recolor_main, "extract": _extract_main,
+    "recolor": _recolor_main, "links": _links_main, "extract": _extract_main,
     "protect": _protect_main, "unlock": _unlock_main,
     "attachments": _attachments_main, "optimize": _optimize_main,
     "watermark": _watermark_main, "stamp": _stamp_main, "number": _number_main,
