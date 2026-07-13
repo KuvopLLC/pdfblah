@@ -340,3 +340,110 @@ def main(argv=None):
 
 if __name__ == "__main__":
     sys.exit(main())
+
+
+def _do_main(argv):
+    ap = argparse.ArgumentParser(
+        prog="pdfblah do",
+        description="Run a pipeline: steps joined by | , in the words the CLI "
+                    "already speaks. `pdfblah do 'tidy | rotate auto | compress "
+                    "target=200kb' in.pdf -o out.pdf`. A folder of inputs makes "
+                    "it a batch (bates start=auto numbers across files). "
+                    "@file.recipe loads the pipeline from a file.")
+    ap.add_argument("pipeline", help="the steps, or @recipe-file")
+    ap.add_argument("inputs", nargs="+", help="a PDF, several, or a folder")
+    ap.add_argument("-o", "--out", required=True,
+                    help="OUT.pdf for a single input, or a directory for many")
+    ap.add_argument("--dry-run", action="store_true", help="show the plan; write nothing")
+    ap.add_argument("--json", action="store_true")
+    a = ap.parse_args(argv)
+    import json as _json
+    import os
+
+    from .pipeline import run_pipeline
+    single_file = (len(a.inputs) == 1 and os.path.isfile(a.inputs[0])
+                   and a.out.lower().endswith(".pdf"))
+    r = run_pipeline(a.pipeline, a.inputs,
+                     output=a.out if single_file else None,
+                     out_dir=None if single_file else a.out,
+                     dry_run=a.dry_run)
+    if a.json:
+        print(_json.dumps(r, indent=2))
+        return 0 if r.get("ok") else 1
+    if not r.get("ok"):
+        print(f"failed: {r.get('error')}", file=sys.stderr)
+        return 1
+    for i, s in enumerate(r.get("steps", []), 1):
+        print(f"  {i}. {s}")
+    if a.dry_run:
+        for f in r.get("files", []):
+            tail = f" (bates from {f['counter']})" if "counter" in f else ""
+            print(f"plan {f['input']}{tail}")
+        print("dry run: nothing written", file=sys.stderr)
+        return 0
+    if single_file:
+        print(f"-> {r['output']}")
+    else:
+        for f in r.get("files", []):
+            mark = "ok  " if f.get("ok") else "ERR "
+            note = f": {f.get('error')}" if not f.get("ok") else ""
+            print(f"{mark}{f['input']} -> {f['output']}{note}")
+    return 0 if r.get("ok") else 1
+
+
+def _verbs_main(argv):
+    argparse.ArgumentParser(prog="pdfblah verbs",
+                            description="Every command, one line each; a | marks "
+                                        "pipeline verbs (PDF in, PDF out).").parse_args(argv)
+    from .surface import COMMANDS, GROUPS
+    for g in GROUPS:
+        print(g)
+        for name, info in sorted(COMMANDS.items()):
+            if info["group"] == g:
+                pipe = "|" if info["kind"] == "transform" else " "
+                print(f"  {pipe} {name:<12} {info['summary']}")
+    print("\n| = usable as a pipeline step:  pdfblah do 'tidy | compress target=200kb' ...")
+    return 0
+
+
+def _help_main(argv):
+    from .surface import COMMANDS, GROUPS
+    if argv and argv[0] in COMMANDS:
+        name = argv[0]
+        try:
+            rc = main([name, "--help"])
+        except SystemExit as e:
+            rc = e.code if isinstance(e.code, int) else 0
+        info = COMMANDS[name]
+        print(f"\nexample:\n  {info['example']}")
+        related = [n for n, i in COMMANDS.items()
+                   if i["group"] == info["group"] and n != name]
+        if related:
+            print(f"related: {', '.join(sorted(related))}")
+        return rc or 0
+    print("pdfblah: a precise, non-destructive Swiss army knife for PDFs.\n")
+    from .surface import COMMANDS as C
+    for g in GROUPS:
+        names = ", ".join(sorted(n for n, i in C.items() if i["group"] == g))
+        print(f"  {g:<16} {names}")
+    print("\n  pdfblah help <command>   the manual for one command, with an example"
+          "\n  pdfblah verbs            every command on one line each"
+          "\n  pdfblah do '<steps>'     run a pipeline: pdfblah do 'tidy | dark' in.pdf -o out.pdf"
+          "\n  pdfblah completions zsh  shell tab-completion (bash works too)")
+    return 0
+
+
+def _completions_main(argv):
+    ap = argparse.ArgumentParser(prog="pdfblah completions",
+                                 description="Print a shell completion script. "
+                                             'zsh: pdfblah completions zsh > ~/.zfunc/_pdfblah  '
+                                             'bash: eval "$(pdfblah completions bash)"')
+    ap.add_argument("shell", choices=["zsh", "bash"])
+    a = ap.parse_args(argv)
+    from .completions import script
+    print(script(a.shell))
+    return 0
+
+
+HANDLERS.update({"do": _do_main, "verbs": _verbs_main, "help": _help_main,
+                 "completions": _completions_main})

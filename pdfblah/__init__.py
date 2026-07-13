@@ -38,7 +38,7 @@ from .recolor import recolor
 from .links import check_links
 from .pdfa import to_pdfa
 
-__version__ = "0.15.0"
+__version__ = "0.16.0"
 __all__ = [
     "process", "redact", "apply_rules", "parse_rules", "parse_rules_file",
     "parse_flags", "font_safe", "detect_alignment", "scrub", "anonymize", "merge",

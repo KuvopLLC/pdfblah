@@ -20,7 +20,6 @@ recipe, same result.
 """
 import io
 import os
-import shlex
 import tempfile
 from contextlib import redirect_stderr, redirect_stdout
 
@@ -28,30 +27,15 @@ from contextlib import redirect_stderr, redirect_stdout
 _POSITIONAL = {"redact", "scrub", "anonymize", "meta", "pages", "rotate", "crop",
                "protect", "unlock", "watermark", "stamp", "number", "bates",
                "optimize", "clean"}
-_FLAGGED = {"tidy", "compress", "ocr", "sanitize", "recolor", "pdfa"}
-ALLOWED = sorted(_POSITIONAL | _FLAGGED | {"replace"})
+_FLAGGED = {"tidy", "compress", "ocr", "sanitize", "recolor", "pdfa", "repair"}
 
 
 def parse_recipe(lines):
-    """Recipe text -> [(command, [args])]. Raises ValueError with the line number
-    on anything the batch runner can't drive."""
-    steps = []
-    for n, raw in enumerate(lines, 1):
-        line = raw.strip()
-        if not line or line.startswith("#"):
-            continue
-        try:
-            words = shlex.split(line)
-        except ValueError as e:
-            raise ValueError(f"line {n}: {e}")
-        cmd, args = words[0], words[1:]
-        if cmd not in ALLOWED:
-            raise ValueError(f"line {n}: '{cmd}' is not a batchable step "
-                             f"(one of: {', '.join(ALLOWED)})")
-        steps.append((cmd, args))
-    if not steps:
-        raise ValueError("the recipe has no steps")
-    return steps
+    """Recipe text -> [(command, [argv])]. A recipe IS a pipeline (one step per
+    line, '|' welcome, sugar like `dark` or `rotate auto` included); parsing is
+    delegated to the pipeline grammar so the two never drift."""
+    from .pipeline import parse
+    return parse("\n".join(lines))
 
 
 def run_batch(recipe, inputs, out_dir, dry_run=False):

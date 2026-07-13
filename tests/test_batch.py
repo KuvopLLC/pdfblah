@@ -77,7 +77,7 @@ def test_batch_failure_is_reported_and_run_continues(folder, tmp_path):
 
 def test_batch_rejects_unknown_step(folder, tmp_path):
     r = pb.run_batch(["frobnicate --hard"], [str(folder)], str(tmp_path / "o"))
-    assert not r["ok"] and "line 1" in r["error"] and "frobnicate" in r["error"]
+    assert not r["ok"] and "step 1" in r["error"] and "frobnicate" in r["error"]
 
 
 def test_batch_name_collisions_get_suffixes(tmp_path):

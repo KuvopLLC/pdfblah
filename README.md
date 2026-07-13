@@ -214,6 +214,20 @@ Output pages are re-rendered images; run `ocr` after if you want selectable text
 On a Mac, `curl -fsSL https://pdfblah.com/clean-scan-mac.sh | sh` installs a Finder
 Quick Action: select PDFs, right-click, Quick Actions > Clean Scan.
 
+**The pipeline** (steps joined by `|`, in the words the CLI already speaks)
+
+```sh
+pdfblah do 'tidy | rotate auto | clean | ocr | shrink 200kb' scan.pdf -o clean.pdf
+pdfblah do 'dark' book.pdf -o book-dark.pdf         # sugar: dark, sepia, ink navy,
+pdfblah do 'watermark DRAFT | sanitize' in/ -o out/ # shrink, straighten
+pdfblah do @discovery.recipe evidence/ -o stamped/  # a recipe file IS a pipeline
+
+pdfblah help            # the map: every command, grouped
+pdfblah help compress   # one command's manual, with a worked example
+pdfblah verbs           # one line each; | marks pipeline verbs
+pdfblah completions zsh # shell tab-completion (bash too)
+```
+
 **Fit under a size cap, search everything, batch it all**
 
 ```sh

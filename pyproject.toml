@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pdfblah"
-version = "0.15.0"
+version = "0.16.0"
 description = "A precise, non-destructive Swiss army knife for PDFs: replace, redact, remove text, scrub PII, anonymize, edit metadata, watermark, stamp, number, split, merge, rotate, crop, encrypt, render, compare, and fill forms. Fonts and layout kept perfect."
 readme = "README.md"
 requires-python = ">=3.9"
