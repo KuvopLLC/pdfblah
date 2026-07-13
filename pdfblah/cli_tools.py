@@ -194,6 +194,24 @@ def _clean_main(argv):
     return 1 if bad else 0
 
 
+def _repair_main(argv):
+    ap = _ap("repair", "Rebuild a PDF that won't open (truncated download, mangled "
+                       "transfer, bad export). The result is re-opened to prove it "
+                       "is genuinely readable before success is claimed.")
+    ap.add_argument("input")
+    ap.add_argument("-o", "--output", required=True)
+    ap.add_argument("--json", action="store_true")
+    a = ap.parse_args(argv)
+    from .repair import repair
+    r = repair(a.input, a.output)
+
+    def _msg():
+        how = "structure reconstructed" if r["recovered"] else "file was structurally sound; rewritten cleanly"
+        return f"repaired: {r['pages']} page(s) saved ({how})  ->  {a.output}"
+
+    return _emit(r, _msg, a.json)
+
+
 def _batch_main(argv):
     ap = _ap("batch", "Run a recipe (a text file of pdfblah steps, one per line) "
                       "over many PDFs. `--start auto` on a bates step numbers "
@@ -681,7 +699,7 @@ TOOL_HANDLERS = {
     "combine": _combine_main, "split": _split_main, "pages": _pages_main,
     "rotate": _rotate_main, "crop": _crop_main, "render": _render_main, "clean": _clean_main,
     "tidy": _tidy_main, "compress": _compress_main, "find": _find_main,
-    "batch": _batch_main, "extract": _extract_main,
+    "batch": _batch_main, "repair": _repair_main, "extract": _extract_main,
     "protect": _protect_main, "unlock": _unlock_main,
     "attachments": _attachments_main, "optimize": _optimize_main,
     "watermark": _watermark_main, "stamp": _stamp_main, "number": _number_main,

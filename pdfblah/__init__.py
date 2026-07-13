@@ -31,6 +31,7 @@ from .compress import compress
 from .findtext import find
 from .batch import run_batch
 from .orient import auto_rotate
+from .repair import repair
 
 __version__ = "0.12.0"
 __all__ = [
@@ -39,7 +40,7 @@ __all__ = [
     "load_data", "read_metadata", "edit_metadata", "apply_to_file",
     # page ops
     "combine", "split", "select_pages", "rotate", "crop", "parse_ranges", "tidy",
-    "interleave", "auto_rotate",
+    "interleave", "auto_rotate", "repair",
     # render / extract / search
     "render_pages", "extract_text", "extract_images", "extract_tables", "find",
     # security / size
