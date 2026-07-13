@@ -85,8 +85,13 @@ def test_compress_grayscale(tmp_path):
     r = pb.compress(src, str(out), grayscale=True)
     assert r["ok"] and r["images_recompressed"] >= 1
     with pikepdf.open(str(out)) as pdf:
+        def _imgs(page):
+            try:
+                return dict(page.get_images())
+            except AttributeError:  # pikepdf too old for get_images (py3.9 CI)
+                return dict(page.images)
         spaces = [str(raw.ColorSpace) for page in pdf.pages
-                  for _, raw in dict(page.get_images()).items() if "/ColorSpace" in raw]
+                  for _, raw in _imgs(page).items() if "/ColorSpace" in raw]
     assert "/DeviceGray" in spaces
 
 
