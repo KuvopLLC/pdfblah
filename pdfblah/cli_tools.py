@@ -272,14 +272,29 @@ def _tidy_main(argv):
 
 
 def _extract_main(argv):
-    ap = _ap("extract", "Extract the text or the embedded images from a PDF.")
+    ap = _ap("extract", "Extract the text, the tables (as CSV), or the embedded "
+                        "images from a PDF.")
     ap.add_argument("input")
-    ap.add_argument("-o", "--out", help="text file (for --text) or directory (for --images)")
+    ap.add_argument("-o", "--out", help="text file (--text), .csv file or directory "
+                                        "(--tables), or directory (--images)")
     ap.add_argument("--text", action="store_true")
+    ap.add_argument("--tables", action="store_true",
+                    help="detect tables and write CSV (one file, or one per table "
+                         "when -o is a directory)")
     ap.add_argument("--images", action="store_true")
     ap.add_argument("--pages", metavar="SPEC")
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args(argv)
+    if a.tables:
+        from .extract import extract_tables
+        r = extract_tables(a.input, a.out, pages=a.pages)
+        if r.get("ok") and not a.out and not a.json:
+            print(r["data"], end="")
+            print(f"{r['tables']} table(s), {r['rows']} row(s)", file=sys.stderr)
+            return 0
+        return _emit(r, lambda: f"extracted {r['tables']} table(s), {r['rows']} row(s)"
+                                + (f" -> {', '.join(r['outputs'])}" if r["outputs"] else ""),
+                     a.json)
     if a.images:
         r = extract_images(a.input, a.out or ".", pages=a.pages)
         return _emit(r, lambda: f"extracted {r['images']} image(s) to {a.out or '.'}", a.json)

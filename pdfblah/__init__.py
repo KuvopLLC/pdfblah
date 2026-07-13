@@ -17,7 +17,7 @@ from .engine import (
 from .commands import scrub, anonymize, merge, load_data
 from .metadata import read_metadata, edit_metadata, apply_to_file
 from .organize import combine, split, select_pages, rotate, crop, parse_ranges
-from .extract import render as render_pages, extract_text, extract_images
+from .extract import render as render_pages, extract_text, extract_images, extract_tables
 from .security import protect, unlock, attachments, optimize
 from .stamp import watermark, stamp, number, bates
 from .forms import list_fields as form_list, fill as form_fill
@@ -38,7 +38,7 @@ __all__ = [
     # page ops
     "combine", "split", "select_pages", "rotate", "crop", "parse_ranges", "tidy",
     # render / extract / search
-    "render_pages", "extract_text", "extract_images", "find",
+    "render_pages", "extract_text", "extract_images", "extract_tables", "find",
     # security / size
     "protect", "unlock", "attachments", "optimize", "compress",
     # marks
