@@ -236,3 +236,116 @@ def interleave(input_path, output_path, insert_path, every=1, insert_page=1):
         dst.close()
     return {"ok": True, "pages": n + inserted, "inserted": inserted,
             "output": output_path}
+
+
+def _safe_filename(name):
+    """A capture group becomes part of a filename: neuter separators and junk."""
+    import re
+    name = re.sub(r"[\\/\0-\x1f]", "-", name).strip(" .")
+    name = re.sub(r"\s+", " ", name)
+    return name or "part"
+
+
+def split_at(input_path, out_dir, pattern, name="{n}.pdf", ci=False):
+    """Split wherever a pattern appears: a new file starts at every page whose
+    text matches, named from a template.
+
+    The office job this exists for: a 200-page PDF of concatenated invoices,
+    out as one file per invoice, each named from the page itself:
+
+        split_at("all.pdf", "out/", r"Invoice #(\\S+)", name="{1}.pdf")
+
+    Template fields: {1}..{9} = capture groups from the match, {n} = part number,
+    {page} = the part's first page. Pages before the first match go to front.pdf.
+    Returns {ok, parts: [{file, from, to, pages}], outputs}.
+    """
+    import re
+
+    import pdfplumber
+
+    try:
+        rx = re.compile(pattern, re.IGNORECASE if ci else 0)
+    except re.error as e:
+        return {"ok": False, "error": f"bad pattern: {e}"}
+    starts = []
+    with pdfplumber.open(input_path) as pdf:
+        n = len(pdf.pages)
+        for i, pg in enumerate(pdf.pages):
+            m = rx.search(pg.extract_text() or "")
+            if m:
+                starts.append((i, m))
+    if not starts:
+        return {"ok": False, "code": "no_match",
+                "error": "the pattern never matched; nothing to split at "
+                         "(a scanned file needs `pdfblah ocr` first)"}
+
+    os.makedirs(out_dir, exist_ok=True)
+    parts, outputs, seen = [], [], {}
+    with pikepdf.open(input_path) as src:
+
+        def write(idxs, fname):
+            count = seen.get(fname, 0) + 1
+            seen[fname] = count
+            if count > 1:
+                stem, ext = os.path.splitext(fname)
+                fname = f"{stem}-{count}{ext}"
+            dst = pikepdf.new()
+            for i in idxs:
+                dst.pages.append(src.pages[i])
+            _carry_metadata(src, dst)
+            out = os.path.join(out_dir, fname)
+            dst.save(out)
+            dst.close()
+            outputs.append(out)
+            parts.append({"file": out, "from": idxs[0] + 1, "to": idxs[-1] + 1,
+                          "pages": len(idxs)})
+
+        if starts[0][0] > 0:
+            write(list(range(0, starts[0][0])), "front.pdf")
+        for k, (i, m) in enumerate(starts):
+            end = starts[k + 1][0] if k + 1 < len(starts) else n
+            fname = name.replace("{n}", str(k + 1)).replace("{page}", str(i + 1))
+            for g in range(1, (m.lastindex or 0) + 1):
+                fname = fname.replace("{%d}" % g, m.group(g) or "")
+            if not fname.lower().endswith(".pdf"):
+                fname += ".pdf"
+            write(list(range(i, end)), _safe_filename(fname))
+    return {"ok": True, "parts": parts, "outputs": outputs}
+
+
+def split_spread(input_path, output_path, order="lr"):
+    """Cut two-page spreads apart: each page becomes two, split down the middle
+    of its longer edge. Lossless (the halves are crop boxes over the same
+    content, like a viewer zooming in). `order` is "lr" for left-then-right,
+    "rl" for right-to-left books.
+
+    Returns {ok, pages_in, pages_out, output}.
+    """
+    if order not in ("lr", "rl"):
+        return {"ok": False, "error": "order must be 'lr' or 'rl'"}
+    # two source handles: appending the same source page twice reuses one cached
+    # copy, and the second half's boxes would clobber the first's. Separate
+    # handles give each half its own independent copy.
+    with pikepdf.open(input_path) as src_a, pikepdf.open(input_path) as src_b:
+        n = len(src_a.pages)
+        dst = pikepdf.new()
+        for i in range(n):
+            page = src_a.pages[i]
+            box = [float(x) for x in page.get("/CropBox", page.mediabox)]
+            x0, y0, x1, y1 = box
+            if (x1 - x0) >= (y1 - y0):  # landscape spread: left / right halves
+                mid = (x0 + x1) / 2
+                halves = [[x0, y0, mid, y1], [mid, y0, x1, y1]]
+            else:  # portrait: top / bottom halves
+                mid = (y0 + y1) / 2
+                halves = [[x0, mid, x1, y1], [x0, y0, x1, mid]]
+            if order == "rl":
+                halves.reverse()
+            for source, h in zip((src_a, src_b), halves):
+                dst.pages.append(source.pages[i])
+                dst.pages[-1].MediaBox = pikepdf.Array(h)
+                dst.pages[-1].CropBox = pikepdf.Array(h)
+        _carry_metadata(src_a, dst)
+        dst.save(output_path)
+        dst.close()
+    return {"ok": True, "pages_in": n, "pages_out": 2 * n, "output": output_path}

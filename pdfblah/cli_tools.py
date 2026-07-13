@@ -65,14 +65,45 @@ def _combine_main(argv):
 
 
 def _split_main(argv):
-    ap = _ap("split", "Split a PDF into several files.")
+    ap = _ap("split", "Split a PDF into several files: by page count, by ranges, "
+                      "wherever a pattern appears (--at, with --name templates), or "
+                      "two-page spreads cut apart (--spread).")
     ap.add_argument("input")
-    ap.add_argument("-o", "--out-dir", required=True)
+    ap.add_argument("-o", "--out-dir", help="output directory (--spread takes a file instead)")
     ap.add_argument("--every", type=int, default=1, help="pages per output file (default 1)")
     ap.add_argument("--ranges", nargs="*", metavar="SPEC",
                     help="page specs, one output each, e.g. 1-3 4-6 (overrides --every)")
+    ap.add_argument("--at", metavar="REGEX",
+                    help="start a new file at every page matching this pattern")
+    ap.add_argument("--name", default="{n}.pdf",
+                    help='with --at: name template, e.g. "{1}.pdf" uses the first '
+                         'capture group; {n} = part number, {page} = first page')
+    ap.add_argument("--ci", action="store_true", help="with --at: ignore case")
+    ap.add_argument("--spread", metavar="OUT_PDF",
+                    help="cut two-page spreads apart into OUT_PDF (book scans); "
+                         "--order rl for right-to-left books")
+    ap.add_argument("--order", default="lr", choices=["lr", "rl"])
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args(argv)
+    if a.spread:
+        from .organize import split_spread
+        r = split_spread(a.input, a.spread, order=a.order)
+        return _emit(r, lambda: f"cut {r['pages_in']} spread(s) into "
+                                f"{r['pages_out']} page(s)  ->  {a.spread}", a.json)
+    if not a.out_dir:
+        raise SystemExit("give -o/--out-dir (or --spread OUT_PDF)")
+    if a.at:
+        from .organize import split_at
+        r = split_at(a.input, a.out_dir, a.at, name=a.name, ci=a.ci)
+
+        def _msg():
+            lines = [f"split into {len(r['parts'])} file(s) in {a.out_dir}"]
+            for p in r["parts"]:
+                lines.append(f"  {os.path.basename(p['file'])}  "
+                             f"(pages {p['from']}-{p['to']})")
+            return "\n".join(lines)
+
+        return _emit(r, _msg, a.json)
     r = split(a.input, a.out_dir, every=a.every, ranges=a.ranges)
     return _emit(r, lambda: f"split into {r['parts']} file(s) in {a.out_dir}", a.json)
 
