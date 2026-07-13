@@ -106,13 +106,33 @@ def _pages_main(argv):
 
 
 def _rotate_main(argv):
-    ap = _ap("rotate", "Rotate pages clockwise (a multiple of 90).")
+    ap = _ap("rotate", "Rotate pages clockwise (a multiple of 90), or --auto to "
+                       "detect and fix upside-down and sideways pages.")
     ap.add_argument("input")
     ap.add_argument("output")
-    ap.add_argument("--degrees", type=int, required=True)
-    ap.add_argument("--pages", metavar="SPEC", help="which pages (default all)")
+    ap.add_argument("--degrees", type=int, help="clockwise degrees (a multiple of 90)")
+    ap.add_argument("--auto", action="store_true",
+                    help="detect each page's orientation (Tesseract) and fix it losslessly")
+    ap.add_argument("--pages", metavar="SPEC", help="which pages (default all; manual mode only)")
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args(argv)
+    if a.auto:
+        from .orient import auto_rotate
+        r = auto_rotate(a.input, a.output)
+
+        def _msg():
+            parts = [f"fixed {len(r['fixed'])} of {r['pages']} page(s)"]
+            for f in r["fixed"]:
+                parts.append(f"  page {f['page']}: rotated {f['by']}")
+            if r["undetected"]:
+                parts.append(f"  (too little text to judge: page(s) "
+                             f"{', '.join(map(str, r['undetected']))}, left alone)")
+            parts[0] += f"  ->  {a.output}"
+            return "\n".join(parts)
+
+        return _emit(r, _msg, a.json)
+    if a.degrees is None:
+        raise SystemExit("give --degrees, or --auto to detect orientation")
     r = rotate(a.input, a.output, a.degrees, a.pages)
     return _emit(r, lambda: f"rotated {r['pages']} page(s) by {a.degrees}  ->  {a.output}", a.json)
 
