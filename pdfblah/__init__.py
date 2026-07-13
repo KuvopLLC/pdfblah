@@ -37,7 +37,7 @@ from .sanitize import sanitize
 from .recolor import recolor
 from .links import check_links
 
-__version__ = "0.13.0"
+__version__ = "0.14.0"
 __all__ = [
     "process", "redact", "apply_rules", "parse_rules", "parse_rules_file",
     "parse_flags", "font_safe", "detect_alignment", "scrub", "anonymize", "merge",

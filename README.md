@@ -229,6 +229,19 @@ pdfblah batch discovery.recipe evidence/ -o stamped/   # one recipe over a folde
                                                        # 'bates --start auto' numbers ACROSS files
 ```
 
+**Share safely, split smart, re-ink, verify**
+
+```sh
+pdfblah sanitize in.pdf -o safe.pdf              # strip metadata, comments, JS, attachments,
+                                                 # old revisions; --dry-run shows what it carries
+pdfblah split in.pdf -o parts/ --at "Invoice #(\S+)" --name "{1}.pdf"   # split by content,
+                                                                         # named from the page
+pdfblah split book.pdf --spread pages.pdf        # cut two-page scans apart (--order rl)
+pdfblah recolor in.pdf -o dark.pdf               # dark mode baked in; sepia, or ink=navy
+pdfblah links in.pdf                             # every link + bookmark checked (--offline)
+pdfblah form t.pdf --fill-from rows.csv -o out/ --name "{Employee}.pdf"  # one PDF per row
+```
+
 **Tidy bloated PDFs** (drop blank pages and exact repeats; needs the render extra:
 `pip install "pdfblah[app]"`)
 
