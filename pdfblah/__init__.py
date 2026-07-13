@@ -16,7 +16,7 @@ from .engine import (
 )
 from .commands import scrub, anonymize, merge, load_data
 from .metadata import read_metadata, edit_metadata, apply_to_file
-from .organize import combine, split, select_pages, rotate, crop, parse_ranges
+from .organize import combine, split, select_pages, rotate, crop, parse_ranges, interleave
 from .extract import render as render_pages, extract_text, extract_images, extract_tables
 from .security import protect, unlock, attachments, optimize
 from .stamp import watermark, stamp, number, bates
@@ -38,6 +38,7 @@ __all__ = [
     "load_data", "read_metadata", "edit_metadata", "apply_to_file",
     # page ops
     "combine", "split", "select_pages", "rotate", "crop", "parse_ranges", "tidy",
+    "interleave",
     # render / extract / search
     "render_pages", "extract_text", "extract_images", "extract_tables", "find",
     # security / size

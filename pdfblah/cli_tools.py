@@ -78,15 +78,29 @@ def _split_main(argv):
 
 
 def _pages_main(argv):
-    ap = _ap("pages", "Keep, drop, or reorder pages. --keep also sets the order.")
+    ap = _ap("pages", "Keep, drop, or reorder pages (--keep also sets the order), "
+                      "or insert a page after every N pages (--insert --every).")
     ap.add_argument("input")
     ap.add_argument("output")
     ap.add_argument("--keep", metavar="SPEC", help="pages to keep, in order, e.g. 3,1,2 or 1-4")
     ap.add_argument("--drop", metavar="SPEC", help="pages to remove, e.g. 2,5")
+    ap.add_argument("--insert", metavar="PDF",
+                    help="insert a page of this PDF (the input itself works too, "
+                         "to duplicate one of its own pages)")
+    ap.add_argument("--every", type=int, default=1,
+                    help="with --insert: after every N pages (default 1)")
+    ap.add_argument("--insert-page", type=int, default=1,
+                    help="with --insert: which page of the insert PDF (default 1)")
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args(argv)
+    if a.insert:
+        from .organize import interleave
+        r = interleave(a.input, a.output, a.insert, every=a.every,
+                       insert_page=a.insert_page)
+        return _emit(r, lambda: f"inserted {r['inserted']} page(s), "
+                                f"{r['pages']} total  ->  {a.output}", a.json)
     if not a.keep and not a.drop:
-        raise SystemExit("give --keep or --drop")
+        raise SystemExit("give --keep, --drop, or --insert")
     r = select_pages(a.input, a.output, keep=a.keep, drop=a.drop)
     return _emit(r, lambda: f"wrote {r['pages']} page(s)  ->  {a.output}", a.json)
 

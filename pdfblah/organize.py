@@ -199,3 +199,40 @@ def crop(input_path, output_path, margins=None, box=None, pages=None):
             page.CropBox = nb
         pdf.save(output_path)
     return {"ok": True, "pages": len(idxs), "output": output_path}
+
+
+def interleave(input_path, output_path, insert_path, every=1, insert_page=1):
+    """Insert one copy of a page after every `every` pages of the input.
+
+    The planner move: a notes page between every week, a divider after every
+    section, a blank behind every sheet for duplex printing. `insert_path` may be
+    another PDF or the input itself (to duplicate one of its own pages);
+    `insert_page` picks which page of it to use (1-based, default the first).
+    Inserts go after every FULL group of `every` pages; a trailing partial group
+    is left as it is. Metadata is carried over.
+    """
+    if every < 1:
+        return {"ok": False, "error": "every must be 1 or more"}
+    with pikepdf.open(input_path) as src, pikepdf.open(insert_path) as ins:
+        if not 1 <= insert_page <= len(ins.pages):
+            return {"ok": False,
+                    "error": f"insert page {insert_page} is out of range "
+                             f"(the insert file has {len(ins.pages)} page(s))"}
+        page = ins.pages[insert_page - 1]
+        n = len(src.pages)
+        dst = pikepdf.new()
+        inserted = 0
+        for i in range(n):
+            dst.pages.append(src.pages[i])
+            if (i + 1) % every == 0:
+                dst.pages.append(page)
+                inserted += 1
+        if not inserted:
+            return {"ok": False,
+                    "error": f"nothing to insert: the input has fewer than "
+                             f"{every} page(s)"}
+        _carry_metadata(src, dst)
+        dst.save(output_path)
+        dst.close()
+    return {"ok": True, "pages": n + inserted, "inserted": inserted,
+            "output": output_path}
